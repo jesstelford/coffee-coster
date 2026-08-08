@@ -594,12 +594,15 @@ export const CLUSTER_LABELS = [
   'range-rail',
 ];
 
+/** The chosen face. The rest stay reachable with `?label=<id>`. */
+const DEFAULT_CLUSTER_LABEL = 'median-range';
+
 const CLUSTER_LABEL = (() => {
   try {
     const asked = new URLSearchParams(window.location.search).get('label');
-    return CLUSTER_LABELS.includes(asked) ? asked : 'median';
+    return CLUSTER_LABELS.includes(asked) ? asked : DEFAULT_CLUSTER_LABEL;
   } catch {
-    return 'median';
+    return DEFAULT_CLUSTER_LABEL;
   }
 })();
 
@@ -655,9 +658,14 @@ function clusterCard(lo, hi, mid) {
       break;
     }
 
+    // The default. Median stays the headline because it is the trustworthy
+    // number; the spread underneath is context. The median is prefixed "~"
+    // whenever a spread exists, so the big number is never read as the price
+    // of any actual coffee — but not when every coffee in the cluster cost
+    // the same, since then it is exact.
     case 'median-range':
       card.classList.add('cc-marker__card--stacked-text');
-      card.appendChild(line('cc-marker__price', formatPrice(mid)));
+      card.appendChild(line('cc-marker__price', flat ? formatPrice(mid) : `~${formatPrice(mid)}`));
       if (!flat) {
         card.appendChild(line('cc-marker__sub', `${formatPrice(lo)}–${bareAmount(hi)}`));
       }

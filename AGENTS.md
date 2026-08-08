@@ -37,8 +37,12 @@ See `TASKS.md` for the build plan and current status.
 - Mobile-first: write base styles for small screens, use `min-width` media queries to scale up.
 - Design language: relaxed tan/latte palette. All colours come from CSS custom properties in
   `src/style.css` (`--tan-*`, `--espresso-*`); never hard-code new hex values in components.
-- Prices are displayed in the light-tan price-card style; clusters show the **median** and are
+- Prices are displayed in the light-tan price-card style; clusters show the **median**
+  (prefixed `~`, because it is nobody's actual price) over the min-max spread, and are
   styled as the top card of a stack. Keep that visual metaphor if you touch markers.
+- Nine other cluster faces live behind `?label=<id>` in `src/map.js` (`CLUSTER_LABELS`).
+  They are a finished experiment kept for comparison — delete them freely once nobody
+  is still choosing.
 - Data is regenerated with `npm run data` (runs the whole pipeline). Never hand-edit generated
   files (`public/data/*.json`); fix the scripts or `data/overrides.json` and re-run.
 - Reddit itself 403s from datacenter IPs — always go through Arctic Shift

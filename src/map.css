@@ -493,3 +493,19 @@
   margin: 3px 0;
   background: var(--tan-400);
 }
+
+/* The two-line cluster cards are wider than the single-line ones, so their
+   top line ran under the count badge. Give the badge its own gutter rather
+   than letting it sit on the price. */
+.cc-marker--label-median-range .cc-marker__card--stacked-text,
+.cc-marker--label-two-line .cc-marker__card--stacked-text,
+.cc-marker--label-two-line-labelled .cc-marker__card--stacked-text {
+  padding-right: 20px;
+}
+
+.cc-marker--label-median-range .cc-marker__count,
+.cc-marker--label-two-line .cc-marker__count,
+.cc-marker--label-two-line-labelled .cc-marker__count {
+  top: -6px;
+  right: -8px;
+}

@@ -12,7 +12,8 @@ scraped from the Reddit thread
   no usage limits, self-hostable if it ever disappears.
 - **Clustering**: [supercluster](https://github.com/mapbox/supercluster) with a custom
   map/reduce that carries every price into the cluster, so each cluster can display the
-  **median** price. Cluster radius is naturally zoom-dependent (recomputed per zoom).
+  **median** price (shown as `~$6.50` over the `$3.50–11.50` spread). Cluster radius is
+  naturally zoom-dependent (recomputed per zoom).
 - **Markers**: custom DOM markers (not canvas symbols) so single prices render as a light-tan
   price card, and clusters render as the same card **stacked** (pseudo-element cards peeking
   out behind the top one) with a small count badge.

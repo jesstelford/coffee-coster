@@ -5,8 +5,9 @@ A mobile-first map of what a coffee costs around Australia.
 Every pin is one person's self-reported coffee price, scraped from a single
 r/AskAnAustralian thread — ["How much was your coffee this morning"][thread]
 (post `1vii42k`). Pins cluster as you zoom out, and each cluster shows the
-**median** price of the coffees inside it. There's a fuzzy suburb search so you can
-jump straight to your own neighbourhood.
+**median** price of the coffees inside it (prefixed `~`) with the full spread
+beneath it. There's a fuzzy suburb search so you can jump straight to your own
+neighbourhood.
 
 77 coffees are mapped. Prices run from $3.00 to $11.50, median $6.50.
 

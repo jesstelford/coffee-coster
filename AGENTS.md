@@ -1,0 +1,58 @@
+# AGENTS.md — Coffee Coster
+
+Guidance for AI agents (and humans) working in this repo.
+
+## What this is
+
+A single-page, mobile-first static site that plots the price of a coffee around Australia
+on a map. Prices were scraped from a Reddit thread
+(r/AskAnAustralian, post id `1vii42k`) via the Arctic Shift archive API.
+See `TASKS.md` for the build plan and current status.
+
+## Stack
+
+- **Build**: Vite, vanilla JavaScript (ES modules), vanilla CSS. No framework — keep it that way
+  unless the app grows real state-management needs.
+- **Map**: MapLibre GL JS + OpenFreeMap vector tiles (free, keyless, no usage limits).
+  Do not swap in a provider that needs an API key or has meaningful usage caps.
+- **Clustering**: supercluster; clusters carry the full price array so the median can be shown.
+- **Search**: client-side fuzzy suburb autocomplete (Fuse.js) over a bundled gazetteer.
+  No network geocoding calls at runtime.
+
+## Layout
+
+- `src/` — app code (`main.js`, modules, `style.css`)
+- `public/data/coffees.json` — the cleaned dataset the app consumes
+- `public/data/suburbs.json` — Australian localities gazetteer for search
+- `scripts/` — data pipeline (fetch thread, build gazetteer, extract/clean/geocode)
+- `data/raw/` — cached raw thread JSON (committed so the pipeline is reproducible offline)
+- `data/overrides.json` — manual fixes for ambiguous locations; edit this rather than
+  hand-editing `coffees.json`
+
+## Conventions
+
+- Mobile-first: write base styles for small screens, use `min-width` media queries to scale up.
+- Design language: relaxed tan/latte palette. All colours come from CSS custom properties in
+  `src/style.css` (`--tan-*`, `--espresso-*`); never hard-code new hex values in components.
+- Prices are displayed in the light-tan price-card style; clusters show the **median** and are
+  styled as the top card of a stack. Keep that visual metaphor if you touch markers.
+- Data is regenerated with `npm run data` (runs the whole pipeline). Never hand-edit generated
+  files (`public/data/*.json`); fix the scripts or `data/overrides.json` and re-run.
+- Reddit itself 403s from datacenter IPs — always go through Arctic Shift
+  (`https://arctic-shift.photon-reddit.com/api/`) for thread data.
+
+## Commands
+
+```bash
+npm install        # install deps
+npm run dev        # dev server
+npm run build      # production build to dist/
+npm run preview    # serve the production build
+npm run data       # re-run the full data pipeline (fetch → gazetteer → extract)
+```
+
+## Definition of done
+
+- `npm run build` succeeds with no errors.
+- The map renders points and clusters correctly on a ~375px viewport.
+- `TASKS.md` checkboxes updated to reflect reality.

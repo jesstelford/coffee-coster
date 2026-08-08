@@ -82,8 +82,8 @@ scraped from the Reddit thread
 
 ## Outcome
 
-63 coffee prices mapped from 337 comments — median $6.00, range $3.00–$9.00,
-across VIC 23 · NSW 21 · QLD 12 · SA 4 · WA 2 · NT 1.
+77 coffee prices mapped from 434 comments — median $6.50, range $3.00–$11.50,
+across VIC 28 · NSW 25 · QLD 15 · SA 5 · WA 3 · NT 1.
 
 Three of those came from subreddit flair — a location the commenter attached to
 their own comment — after a review pass over the 72 prices that name no place.

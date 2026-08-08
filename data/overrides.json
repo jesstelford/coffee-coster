@@ -382,6 +382,41 @@
       "via": "Lismore",
       "approximate": true,
       "confidence": "medium"
+    },
+    "south east melbourne": {
+      "name": "South East Melbourne",
+      "via": "Glen Waverley",
+      "state": "VIC",
+      "confidence": "low",
+      "approximate": true
+    },
+    "southeast melbourne": {
+      "name": "South East Melbourne",
+      "via": "Glen Waverley",
+      "state": "VIC",
+      "confidence": "low",
+      "approximate": true
+    },
+    "south eastern suburbs melbourne": {
+      "name": "South East Melbourne",
+      "via": "Glen Waverley",
+      "state": "VIC",
+      "confidence": "low",
+      "approximate": true
+    },
+    "south east suburbs melbourne": {
+      "name": "South East Melbourne",
+      "via": "Glen Waverley",
+      "state": "VIC",
+      "confidence": "low",
+      "approximate": true
+    },
+    "melbourne south east": {
+      "name": "South East Melbourne",
+      "via": "Glen Waverley",
+      "state": "VIC",
+      "confidence": "low",
+      "approximate": true
     }
   },
   "prefer": {

@@ -42,8 +42,11 @@ import { initSearch } from './search.js';
  */
 setWorkerUrl(maplibreWorkerUrl);
 
-/** Same relative form the search module uses for its gazetteer. */
-const COFFEES_URL = 'data/coffees.json';
+/**
+ * Resolved against the configured Vite base, so the app works both at a
+ * domain root and under a GitHub Pages sub-path like /coffee-coster/.
+ */
+const COFFEES_URL = `${(import.meta.env && import.meta.env.BASE_URL) || '/'}data/coffees.json`;
 
 /** Suburb level: close enough to read street names, wide enough to
  *  still show the neighbouring cafes. */

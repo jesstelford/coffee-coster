@@ -47,7 +47,7 @@ all for TAS or ACT.
 ```sh
 npm install     # install dependencies
 npm run dev     # Vite dev server
-npm run build   # production build to dist/
+npm run build   # production build to docs/ (committed, served by GitHub Pages)
 npm run preview # serve the built site
 npm run data    # regenerate public/data/*.json (see below)
 ```
@@ -116,6 +116,25 @@ configuration the app uses — odd/even medians, that the reducer neither drops 
 duplicates prices when clusters merge across zoom levels, and that child props
 aren't mutated between queries. `test-search.mjs` covers fuzzy matching, state-suffix
 queries, and the recent-searches list (cap, dedupe, ordering, junk input).
+
+## Deploying
+
+The site is completely static — no server rendering and no runtime API. Prices and
+the suburb gazetteer are generated ahead of time into `public/data/`, map tiles come
+from OpenFreeMap's CDN, and the search index is built in the browser. Any static
+host will serve it.
+
+`npm run build` writes to **`docs/`**, which is committed, so GitHub Pages can serve
+it straight from the default branch with no deploy workflow or `gh-pages` branch:
+
+> Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, folder: `/docs`
+
+`vite.config.js` sets `base` to `/coffee-coster/` because project pages are served
+from a sub-path. For a user/organisation page or a custom domain at the domain root,
+build with `BASE_PATH=/ npm run build`.
+
+Re-run `npm run build` and commit `docs/` whenever `src/` or the data changes —
+the deployed site is whatever `docs/` contains, not what `src/` says.
 
 ## Attribution
 

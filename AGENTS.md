@@ -46,13 +46,15 @@ See `TASKS.md` for the build plan and current status.
 ```bash
 npm install        # install deps
 npm run dev        # dev server
-npm run build      # production build to dist/
+npm run build      # production build to docs/ (committed; GitHub Pages serves it)
 npm run preview    # serve the production build
 npm run data       # re-run the full data pipeline (fetch → gazetteer → extract)
 ```
 
 ## Definition of done
 
-- `npm run build` succeeds with no errors.
+- `npm run build` succeeds with no errors, and the refreshed `docs/` is committed
+  alongside the `src/` change that caused it — the deployed site is whatever is in
+  `docs/`, so leaving it stale silently ships the old build.
 - The map renders points and clusters correctly on a ~375px viewport.
 - `TASKS.md` checkboxes updated to reflect reality.

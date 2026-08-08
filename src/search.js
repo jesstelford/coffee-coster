@@ -29,7 +29,13 @@ export const RECENT_KEY = 'coffee-coster:recent';
 export const MAX_RECENT = 3;
 export const MAX_RESULTS = 8;
 
-const SUBURBS_URL = 'data/suburbs.json';
+/**
+ * Resolved against the Vite base so it survives a GitHub Pages sub-path.
+ * Falls back to '/' under plain node, where scripts/test-search.mjs imports
+ * this module and `import.meta.env` does not exist.
+ */
+const BASE_URL = (import.meta.env && import.meta.env.BASE_URL) || '/';
+const SUBURBS_URL = `${BASE_URL}data/suburbs.json`;
 
 /** After a failed gazetteer fetch, wait this long before retrying. */
 const RETRY_AFTER_MS = 5000;

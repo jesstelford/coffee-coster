@@ -1,0 +1,405 @@
+/* ============================================================
+   Coffee Coster — map markers, cluster stacks and popups.
+
+   Design tokens (--tan-*, --espresso-*, --crema, --accent, radii,
+   shadows) all come from src/style.css. Never hard-code a colour here.
+
+   Mobile-first: base rules target ~375px, min-width queries scale up.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Shared marker shell
+
+   The MapLibre marker element is this <button>. MapLibre writes an
+   inline transform onto it, which makes it a stacking context — the
+   card's stack pseudo-elements sit at negative z-index inside it.
+   `isolation: isolate` guarantees that even if MapLibre stops doing so.
+   ------------------------------------------------------------ */
+
+.cc-marker {
+  --cc-marker-pad: 3px;
+
+  position: relative;
+  isolation: isolate;
+  display: block;
+
+
+  /* Padding grows the hit area past 40px without moving the visual
+     centre, which is what MapLibre anchors on. */
+  margin: 0;
+  padding: var(--cc-marker-pad);
+  border: 0;
+  background: none;
+  color: inherit;
+
+  font-family: var(--font-sans);
+  line-height: var(--line-height);
+
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* map.css loads after maplibre-gl.css, so an equal-specificity
+   `.cc-marker { position: relative }` would beat `.maplibregl-marker
+   { position: absolute }` and strand every marker at the top-left of
+   the map. Win it back explicitly. */
+.maplibregl-marker.cc-marker {
+  position: absolute;
+}
+
+.cc-marker:focus {
+  outline: none;
+}
+
+.cc-marker:focus-visible .cc-marker__card {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------
+   The price card itself
+   ------------------------------------------------------------ */
+
+.cc-marker__card {
+  /* position only — deliberately no z-index, so the card stays a plain
+     positioned box (z-index: auto) and its negative-z stack pseudos land
+     in .cc-marker's stacking context, i.e. *behind* the card's fill. */
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* >= 32px touch target on its own; 40px with the shell padding. */
+  min-width: 54px;
+  min-height: 34px;
+  padding: 3px 10px;
+
+  border: 1px solid var(--tan-300);
+  border-radius: var(--radius-sm);
+  background: var(--tan-200);
+  color: var(--espresso-900);
+  box-shadow: var(--shadow-md);
+
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.cc-marker__price {
+  display: block;
+}
+
+@media (hover: hover) {
+  .cc-marker:hover .cc-marker__card {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+.cc-marker:active .cc-marker__card {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ------------------------------------------------------------
+   Cluster = the same card, made to look like the top of a stack.
+
+   Paint order runs deepest first:
+     .cc-marker--deep::before   z -3   (third edge, big clusters only)
+     .cc-marker__card::after    z -2   (tan-300 edge, furthest)
+     .cc-marker__card::before   z -1   (tan-100 edge, nearest)
+     .cc-marker__card           auto   (the real card)
+     .cc-marker__count          z  3   (count badge, always on top)
+   ------------------------------------------------------------ */
+
+.cc-marker--cluster .cc-marker__card::before,
+.cc-marker--cluster .cc-marker__card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--tan-300);
+  border-radius: inherit;
+  box-shadow: var(--shadow-sm);
+}
+
+.cc-marker--cluster .cc-marker__card::before {
+  z-index: -1;
+  background: var(--tan-100);
+  transform: translate(3px, 4px) rotate(2.4deg);
+}
+
+.cc-marker--cluster .cc-marker__card::after {
+  z-index: -2;
+  background: var(--tan-300);
+  transform: translate(-4px, 7px) rotate(-3.4deg);
+}
+
+/* Deeper stacks for the fatter clusters. The third edge is anchored to
+   the card box, i.e. inset by the shell padding. */
+.cc-marker--cluster.cc-marker--deep::before {
+  content: "";
+  position: absolute;
+  inset: var(--cc-marker-pad);
+  z-index: -3;
+  border: 1px solid var(--tan-400);
+  border-radius: var(--radius-sm);
+  background: var(--tan-300);
+  transform: translate(6px, 11px) rotate(5deg);
+}
+
+.cc-marker--cluster.cc-marker--deep .cc-marker__card::before {
+  transform: translate(4px, 5px) rotate(3deg);
+}
+
+.cc-marker--cluster.cc-marker--deep .cc-marker__card::after {
+  transform: translate(-5px, 9px) rotate(-4.4deg);
+}
+
+/* ---- count badge -------------------------------------------- */
+
+.cc-marker__count {
+  position: absolute;
+  top: -3px;
+  right: -6px;
+  z-index: 3;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 21px;
+  height: 21px;
+  padding: 0 5px;
+
+  border: 1.5px solid var(--tan-50);
+  border-radius: var(--radius-pill);
+  background: var(--espresso-700);
+  color: var(--tan-50);
+  box-shadow: var(--shadow-sm);
+
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------
+   Popups — tan themed, tap-friendly
+   ------------------------------------------------------------ */
+
+.cc-popup {
+  z-index: 5;
+  font-family: var(--font-sans);
+}
+
+.cc-popup .maplibregl-popup-content {
+  padding: var(--space-4);
+  border: 1px solid var(--tan-300);
+  border-radius: var(--radius-md);
+  background: var(--tan-100);
+  color: var(--espresso-900);
+  box-shadow: var(--shadow-lg);
+  font-size: 14px;
+  line-height: var(--line-height);
+}
+
+/* The tip is a CSS triangle; the filled side depends on the anchor. */
+.cc-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.cc-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.cc-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--tan-100);
+}
+
+.cc-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.cc-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.cc-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--tan-100);
+}
+
+.cc-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--tan-100);
+}
+
+.cc-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--tan-100);
+}
+
+.cc-popup .maplibregl-popup-close-button {
+  top: 2px;
+  right: 2px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--espresso-500);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cc-popup .maplibregl-popup-close-button:hover,
+.cc-popup .maplibregl-popup-close-button:focus-visible {
+  background: var(--crema);
+  color: var(--espresso-900);
+  outline: none;
+}
+
+.cc-popup .maplibregl-popup-close-button:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* ---- popup body -------------------------------------------- */
+
+.cc-popup__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* keep clear of the close button */
+  padding-right: var(--space-4);
+  max-width: 100%;
+}
+
+.cc-popup__place {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--espresso-500);
+}
+
+.cc-popup__price-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.cc-popup__price {
+  padding: 2px 10px;
+  border: 1px solid var(--tan-300);
+  border-radius: var(--radius-sm);
+  background: var(--tan-200);
+  color: var(--espresso-900);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-popup__drink {
+  color: var(--espresso-700);
+  font-size: 14px;
+}
+
+.cc-popup__excerpt {
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--tan-300);
+  color: var(--espresso-700);
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.cc-popup__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: 12px;
+  color: var(--espresso-500);
+}
+
+.cc-popup__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 2px;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cc-popup__link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ------------------------------------------------------------
+   MapLibre chrome — tan it down. Navigation control is only added
+   on >= 768px viewports (see src/map.js).
+   ------------------------------------------------------------ */
+
+.maplibregl-ctrl-group {
+  border: 1px solid var(--tan-300);
+  border-radius: var(--radius-md);
+  background: var(--tan-100);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--tan-300);
+}
+
+/* beats maplibre's `.maplibregl-ctrl button:not(:disabled):hover` */
+.maplibregl-ctrl-group button:not(:disabled):hover {
+  background: var(--crema);
+}
+
+/* maplibre paints a bright blue :focus glow — swap it for the tan ring */
+.maplibregl-ctrl-group button:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+.maplibregl-ctrl-group button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.maplibregl-canvas:focus {
+  outline: none;
+}
+
+/* ------------------------------------------------------------
+   >= 768px — a touch more room, slightly larger cards
+   ------------------------------------------------------------ */
+
+@media (min-width: 768px) {
+  .cc-marker__card {
+    min-width: 58px;
+    min-height: 36px;
+    font-size: 16px;
+  }
+
+  .cc-popup .maplibregl-popup-content {
+    font-size: 15px;
+  }
+}
+
+/* ------------------------------------------------------------
+   Reduced motion
+   ------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-marker__card {
+    transition: none;
+  }
+
+  .cc-marker:hover .cc-marker__card,
+  .cc-marker:active .cc-marker__card {
+    transform: none;
+  }
+}

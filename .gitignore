@@ -3,3 +3,6 @@ dist
 .DS_Store
 *.local
 .vite
+
+# Regenerable gazetteer download (public/data/suburbs.json is committed instead)
+data/raw/AU.zip

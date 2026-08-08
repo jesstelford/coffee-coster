@@ -172,6 +172,60 @@
  ],
  "unmapped": [
   {
+   "id": "p2egks9",
+   "price": 5.5,
+   "text": "$5.50. Normally I don\u2019t but this was at the daughter\u2019s netball and they directly benefit from the profit. Just have to gamble on whether they burn it or make it too milky or both. They\u2019re netballers first, baristas second. Possibly third.",
+   "parentText": "Just curious. Paid $7.10 for a flat white this am. Just wondering what you paid for yours ? Location for me Palm Beach GC",
+   "replies": [],
+   "ownOther": [],
+   "proposedLocation": "Brisbane",
+   "proposedState": "QLD",
+   "confidence": 85,
+   "evidence": "author_flair_text on this very comment: \"Brisbane, QLD\"",
+   "reasoning": "The commenter attached \"Brisbane, QLD\" to this comment as their subreddit flair \u2014 a location they published themselves, on the message, visible to everyone reading the thread. The purchase is concrete and same-day (\"$5.50. Normally I don't but this was at the daughter's netball\"). Brisbane resolves uniquely in the gazetteer.",
+   "verdict": "propose",
+   "challenged": false,
+   "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2egks9/",
+   "approximate": false,
+   "viaFlair": true
+  },
+  {
+   "id": "p2dmxmw",
+   "price": 8.5,
+   "text": "$8.50 cold brew with pistachio cold foam",
+   "parentText": "Just curious. Paid $7.10 for a flat white this am. Just wondering what you paid for yours ? Location for me Palm Beach GC",
+   "replies": [],
+   "ownOther": [],
+   "proposedLocation": "Northern Rivers",
+   "proposedState": "NSW",
+   "confidence": 80,
+   "evidence": "author_flair_text on this very comment: \"Northern Rivers\"",
+   "reasoning": "Self-published flair \"Northern Rivers\" \u2014 a NSW region, not a suburb, and not a gazetteer row. Would need an alias borrowing a centre's coordinates (Lismore is the regional centre; Byron Bay is the other candidate) and must carry approximate:true so it reads as an area, not an address. The purchase itself is concrete (\"$8.50 cold brew with pistachio cold foam\").",
+   "verdict": "propose",
+   "challenged": false,
+   "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2dmxmw/",
+   "approximate": true,
+   "viaFlair": true
+  },
+  {
+   "id": "p2dom3k",
+   "price": 4.5,
+   "text": "I didn't get a coffee this morning but the last one I got was a large cappuccino with skim and it was $4.50. $7.10 is outrageous.",
+   "parentText": "Just curious. Paid $7.10 for a flat white this am. Just wondering what you paid for yours ? Location for me Palm Beach GC",
+   "replies": [],
+   "ownOther": [],
+   "proposedLocation": "Sydney",
+   "proposedState": "NSW",
+   "confidence": 70,
+   "evidence": "author_flair_text on this very comment: \"Sydney\"",
+   "reasoning": "Self-published flair \"Sydney\" on this comment. Sydney resolves uniquely (NSW). Confidence held below the others because the price is explicitly not that morning \u2014 \"I didn't get a coffee this morning but the last one I got was ... $4.50\" \u2014 so the existing dated-price rule should cap this at medium.",
+   "verdict": "propose",
+   "challenged": false,
+   "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2dom3k/",
+   "approximate": false,
+   "viaFlair": true
+  },
+  {
    "id": "p2e8pnc",
    "price": 1.5,
    "text": "Still $1.50 for small that was $1",
@@ -389,22 +443,6 @@
    "verdict": "unknown",
    "challenged": false,
    "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2dn6cr/"
-  },
-  {
-   "id": "p2dom3k",
-   "price": 4.5,
-   "text": "I didn't get a coffee this morning but the last one I got was a large cappuccino with skim and it was $4.50. $7.10 is outrageous.",
-   "parentText": "Just curious. Paid $7.10 for a flat white this am. Just wondering what you paid for yours ? Location for me Palm Beach GC",
-   "replies": [],
-   "ownOther": [],
-   "proposedLocation": "",
-   "proposedState": "",
-   "confidence": 8,
-   "evidence": "text: \"I didn't get a coffee this morning but the last one I got was a large cappuccino with skim and it was $4.50. $7.10 is outrageous.\" ; parentText: \"... Location for me Palm Beach GC\"",
-   "reasoning": "The commenter contrasts their $4.50 against the OP's $7.10, which if anything implies they are somewhere other than the OP's Palm Beach. They name no place of their own, and have no sibling or reply text.",
-   "verdict": "unknown",
-   "challenged": false,
-   "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2dom3k/"
   },
   {
    "id": "p2drnr7",
@@ -699,22 +737,6 @@
    "verdict": "unknown",
    "challenged": false,
    "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2eoiep/"
-  },
-  {
-   "id": "p2dmxmw",
-   "price": 8.5,
-   "text": "$8.50 cold brew with pistachio cold foam",
-   "parentText": "Just curious. Paid $7.10 for a flat white this am. Just wondering what you paid for yours ? Location for me Palm Beach GC",
-   "replies": [],
-   "ownOther": [],
-   "proposedLocation": "",
-   "proposedState": "",
-   "confidence": 2,
-   "evidence": "text: \"$8.50 cold brew with pistachio cold foam\"",
-   "reasoning": "Bare price-and-drink reply to the thread's open question. No venue, suburb, landmark or regional wording. No replies, no siblings. The parent's 'Palm Beach GC' is the OP's location and cannot be inherited by a respondent answering a nationwide poll.",
-   "verdict": "unknown",
-   "challenged": false,
-   "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2dmxmw/"
   },
   {
    "id": "p2dokpe",
@@ -1270,22 +1292,6 @@
    "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2edpez/"
   },
   {
-   "id": "p2egks9",
-   "price": 5.5,
-   "text": "$5.50. Normally I don\u2019t but this was at the daughter\u2019s netball and they directly benefit from the profit. Just have to gamble on whether they burn it or make it too milky or both. They\u2019re netballers first, baristas second. Possibly third.",
-   "parentText": "Just curious. Paid $7.10 for a flat white this am. Just wondering what you paid for yours ? Location for me Palm Beach GC",
-   "replies": [],
-   "ownOther": [],
-   "proposedLocation": "",
-   "proposedState": "",
-   "confidence": 0,
-   "evidence": "text: \"$5.50. Normally I don\u2019t but this was at the daughter\u2019s netball and they directly benefit from the profit.\"",
-   "reasoning": "A junior netball canteen is a specific setting but not a specific place \u2014 no club, court, association, suburb, or state is named, and netball clubs exist nationwide. Reply to the OP's \"...Location for me Palm Beach GC\" question, which cannot be inherited. No replies, no same-author siblings.",
-   "verdict": "unknown",
-   "challenged": false,
-   "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2egks9/"
-  },
-  {
    "id": "p2eh3oh",
    "price": 6.5,
    "text": "Flat white six fiddy",
@@ -1417,7 +1423,7 @@
  "stats": {
   "existingCount": 13,
   "unmappedCount": 75,
-  "proposedCount": 0,
+  "proposedCount": 3,
   "mappedTotal": 60
  }
 }

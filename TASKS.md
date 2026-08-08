@@ -34,22 +34,22 @@ scraped from the Reddit thread
 - [x] Initialise Vite vanilla-JS project (`package.json`, `index.html`, `src/`)
 - [x] Base mobile-first stylesheet with the tan palette (CSS custom properties)
 - [x] `AGENTS.md` with project conventions
-- [ ] `README.md` with what/why/how-to-run
+- [x] `README.md` with what/why/how-to-run
 
 ### 2. Data pipeline (scrape → clean → geocode)
 - [x] Fetch full comment tree from Arctic Shift API (`scripts/fetch-thread.mjs`),
       cache raw JSON in `data/raw/`
 - [x] Build an Australian localities gazetteer (suburb name, state, postcode, lat, lon)
       from the free GeoNames AU postcode dataset (`scripts/build-gazetteer.mjs`)
-- [ ] Extraction script (`scripts/extract-coffees.mjs`):
-  - [ ] Parse prices from free text (`$7.10`, `7.10`, `“$6 for a large”`, ranges, “free”)
-  - [ ] Parse locations (suburb/city/state mentions, “inner west Sydney”, “Palm Beach GC”…)
-  - [ ] Walk reply threads so a price in a reply inherits the location asked/answered nearby
-  - [ ] Sanity filters (AUD 1–15 range, ignore jokes/instant-coffee-at-home $0 unless real)
-  - [ ] Manual overrides file (`data/overrides.json`) for ambiguous/unmatched entries
-- [ ] Geocode matched locations against gazetteer; jitter identical coordinates slightly
-- [ ] Emit `public/data/coffees.json` (price, lat, lon, label, comment excerpt)
-- [ ] Review the cleaned dataset for junk (spot check against thread)
+- [x] Extraction script (`scripts/extract-coffees.mjs`):
+  - [x] Parse prices from free text (`$7.10`, `7.10`, `“$6 for a large”`, ranges, “free”)
+  - [x] Parse locations (suburb/city/state mentions, “inner west Sydney”, “Palm Beach GC”…)
+  - [x] Walk reply threads so a price in a reply inherits the location asked/answered nearby
+  - [x] Sanity filters (AUD 1–15 range, ignore jokes/instant-coffee-at-home $0 unless real)
+  - [x] Manual overrides file (`data/overrides.json`) for ambiguous/unmatched entries
+- [x] Geocode matched locations against gazetteer; jitter identical coordinates slightly
+- [x] Emit `public/data/coffees.json` (price, lat, lon, label, comment excerpt)
+- [x] Review the cleaned dataset for junk (spot check against thread)
 
 ### 3. Map
 - [x] MapLibre map with OpenFreeMap tiles, centred on Australia, sensible mobile defaults
@@ -64,18 +64,39 @@ scraped from the Reddit thread
 ### 4. Search
 - [x] Search bar fixed at top (overlay on map), tan-themed
 - [x] Fuzzy suburb autocomplete (Fuse.js over gazetteer), keyboard + touch friendly
-- [ ] Selecting a result flies the map to that suburb
+- [x] Selecting a result flies the map to that suburb
 - [x] Store last 3 searches in `localStorage`
 - [x] Recent-searches chip row directly under the search bar (horizontal, single line)
 
 ### 5. Polish
-- [ ] Relaxed tan vibe throughout: warm background tints, rounded cards, soft shadows,
+- [x] Relaxed tan vibe throughout: warm background tints, rounded cards, soft shadows,
       coffee-ish accent colours; map style tinted to match where possible
-- [ ] Mobile-first verified at 375px; works fine on desktop
-- [ ] Loading / empty states (data fetch, no search results)
-- [ ] Attribution footer (OpenFreeMap/OpenMapTiles/OSM, Reddit thread source, GeoNames)
-- [ ] Run production build, smoke-test with Playwright screenshot
+- [x] Mobile-first verified at 375px; works fine on desktop
+- [x] Loading / empty states (data fetch, no search results)
+- [x] Attribution footer (OpenFreeMap/OpenMapTiles/OSM, Reddit thread source, GeoNames)
+- [x] Run production build, smoke-test with Playwright screenshot
 
 ### 6. Ship
-- [ ] Commit and push to `claude/coffee-price-map-au-q67onw`
+- [x] Commit and push to `claude/coffee-price-map-au-q67onw`
 - [ ] (Optional, later) GitHub Pages deploy workflow
+
+## Outcome
+
+60 coffee prices mapped from 337 comments — median $6.00, range $3.00–$9.00,
+across VIC 23 · NSW 19 · QLD 11 · SA 4 · WA 2 · NT 1.
+
+Verified in real Chromium at 375×812 and 1280×800: tiles render, clusters break
+apart from z4 to z16, typo search (“newtwon”) ranks Newtown NSW first and flies
+there, recents persist across reload as a single 3-chip row, no horizontal
+scroll, 0 console errors. Unit tests: 32 assertions on the cluster median maths,
+28 on fuzzy search and recents.
+
+### Known trade-off
+
+On a portrait phone the opening view crops the west coast, so **Perth’s two
+coffees are off-screen until you pan or zoom out** (Darwin is retained). This is
+geometry, not an oversight: Australia is landscape-shaped and a phone is
+portrait, so fitting all 38° of data longitude into 375px leaves the markers in
+a thin band with more than half the screen showing ocean. Desktop fits the whole
+continent and is unaffected. Reverting to the complete-but-emptier fit is a
+one-line change to `PORTRAIT_FOCUS_WEST` in `src/map.js`.

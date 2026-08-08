@@ -21,6 +21,9 @@ See `TASKS.md` for the build plan and current status.
 
 ## Layout
 
+- `DATA_CONTRACT.md` — shape of the generated JSON the app consumes
+- `docs/` — **build output**, committed for GitHub Pages. Never hand-edit; never put
+  source or documentation here, `npm run build` empties it.
 - `src/` — app code (`main.js`, modules, `style.css`)
 - `public/data/coffees.json` — the cleaned dataset the app consumes
 - `public/data/suburbs.json` — Australian localities gazetteer for search

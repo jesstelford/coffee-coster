@@ -88,7 +88,7 @@ Two properties the pipeline is built to guarantee:
   `npm run data` is the expected result, not a coincidence.
 - **Generated JSON is never hand-edited.** `public/data/coffees.json` and
   `public/data/suburbs.json` are build products. To change them, change a script or
-  `data/overrides.json` and re-run. See `docs/DATA_CONTRACT.md` for their exact shape.
+  `data/overrides.json` and re-run. See `DATA_CONTRACT.md` for their exact shape.
 
 [arctic]: https://arctic-shift.photon-reddit.com
 [geonames]: https://www.geonames.org/

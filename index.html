@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#FBF6EF" />
+    <meta
+      name="description"
+      content="A map of what a coffee actually costs around Australia, built from a Reddit thread."
+    />
+    <title>Coffee Coster — what a coffee costs around Australia</title>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <header class="topbar">
+      <div class="search-wrap">
+        <input
+          id="search-input"
+          type="search"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          enterkeyhint="search"
+          aria-label="Search a suburb"
+          placeholder="Search a suburb…"
+        />
+        <ul id="search-results" class="search-results" hidden></ul>
+      </div>
+      <div id="recent-searches" class="recent-searches" hidden></div>
+    </header>
+
+    <div id="loading" class="loading">Brewing the map…</div>
+
+    <footer id="attribution" class="attribution"></footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -420,3 +420,76 @@
     transform: none;
   }
 }
+
+/* ------------------------------------------------------------
+   EXPERIMENT — cluster label variants (?label=<id>)
+
+   Only the cluster card changes; single price cards are untouched.
+   Once a variant is chosen, delete the rest along with clusterCard()'s
+   other branches in map.js.
+   ------------------------------------------------------------ */
+
+/* Two or more lines of text inside a card that was built for one. */
+.cc-marker__card--stacked-text {
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  line-height: 1.12;
+}
+
+/* "min"/"max" set quieter and smaller than the money beside them. */
+.cc-marker__card--labelled .cc-marker__row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.cc-marker__minmax {
+  font-size: 0.62em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--espresso-500);
+  text-transform: lowercase;
+}
+
+/* The median stays the headline; the spread is a caption under it. */
+.cc-marker__sub {
+  font-size: 0.72em;
+  font-weight: 600;
+  color: var(--espresso-500);
+  letter-spacing: -0.01em;
+}
+
+/* The stack already means "more underneath" — so the card behind carries
+   the cheapest price. The lower edge grows and holds text. */
+.cc-marker--label-stack-encoded .cc-marker__card::after {
+  content: var(--cc-under, "");
+  inset: auto -4px -15px 6px;
+  height: 22px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2px;
+  font-size: 0.78em;
+  font-weight: 650;
+  color: var(--espresso-700);
+  background: var(--crema);
+  transform: none;
+}
+
+.cc-marker--label-stack-encoded .cc-marker__card::before {
+  transform: translate(3px, 4px) rotate(2deg);
+}
+
+/* Two prices flanking a hairline, read as "from — to". */
+.cc-marker__card--rail {
+  gap: 6px;
+}
+
+.cc-marker__rail {
+  width: 1px;
+  align-self: stretch;
+  margin: 3px 0;
+  background: var(--tan-400);
+}

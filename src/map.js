@@ -570,6 +570,124 @@ function priceCard(price) {
   return card;
 }
 
+/**
+ * EXPERIMENT — how a cluster should summarise the prices inside it.
+ *
+ * A cluster currently shows the median. Showing the spread (min–max) says more
+ * but needs more room, and room is exactly what a marker on a phone does not
+ * have. Each variant below is a different answer to that trade-off; pick one
+ * with `?label=<id>` and the rest can be deleted.
+ *
+ * Keep 'median' as the default so the deployed site is unaffected while this
+ * is being decided.
+ */
+export const CLUSTER_LABELS = [
+  'median',
+  'range-both',
+  'range-single',
+  'range-spaced',
+  'range-endash',
+  'two-line',
+  'two-line-labelled',
+  'median-range',
+  'stack-encoded',
+  'range-rail',
+];
+
+const CLUSTER_LABEL = (() => {
+  try {
+    const asked = new URLSearchParams(window.location.search).get('label');
+    return CLUSTER_LABELS.includes(asked) ? asked : 'median';
+  } catch {
+    return 'median';
+  }
+})();
+
+/** `$5.50` with the leading `$` stripped — for the right half of a range. */
+function bareAmount(price) {
+  return formatPrice(price).replace('$', '');
+}
+
+/**
+ * Build the card face for a cluster under the active label variant.
+ * @param {number} lo cheapest price in the cluster
+ * @param {number} hi dearest price in the cluster
+ * @param {number} mid median price
+ */
+function clusterCard(lo, hi, mid) {
+  const card = el('span', 'cc-marker__card');
+  const line = (cls, text) => el('span', cls, text);
+  const single = (text) => card.appendChild(line('cc-marker__price', text));
+
+  // A cluster whose coffees all cost the same has no range to show.
+  const flat = lo === hi;
+
+  switch (CLUSTER_LABEL) {
+    case 'range-both':
+      single(flat ? formatPrice(lo) : `${formatPrice(lo)}-${formatPrice(hi)}`);
+      break;
+    case 'range-single':
+      single(flat ? formatPrice(lo) : `${formatPrice(lo)}-${bareAmount(hi)}`);
+      break;
+    case 'range-spaced':
+      single(flat ? formatPrice(lo) : `${formatPrice(lo)} - ${formatPrice(hi)}`);
+      break;
+    case 'range-endash':
+      single(flat ? formatPrice(lo) : `${formatPrice(lo)}–${bareAmount(hi)}`);
+      break;
+
+    case 'two-line':
+      card.classList.add('cc-marker__card--stacked-text');
+      card.appendChild(line('cc-marker__price', formatPrice(hi)));
+      if (!flat) card.appendChild(line('cc-marker__price', formatPrice(lo)));
+      break;
+
+    case 'two-line-labelled': {
+      card.classList.add('cc-marker__card--stacked-text', 'cc-marker__card--labelled');
+      const row = (label, price) => {
+        const r = el('span', 'cc-marker__row');
+        r.appendChild(line('cc-marker__minmax', label));
+        r.appendChild(line('cc-marker__price', formatPrice(price)));
+        return r;
+      };
+      card.appendChild(row('max', hi));
+      if (!flat) card.appendChild(row('min', lo));
+      break;
+    }
+
+    case 'median-range':
+      card.classList.add('cc-marker__card--stacked-text');
+      card.appendChild(line('cc-marker__price', formatPrice(mid)));
+      if (!flat) {
+        card.appendChild(line('cc-marker__sub', `${formatPrice(lo)}–${bareAmount(hi)}`));
+      }
+      break;
+
+    // The stack is already the visual metaphor for "more underneath", so let
+    // the card behind carry the cheapest price and the top card the dearest.
+    case 'stack-encoded':
+      card.classList.add('cc-marker__card--encoded');
+      card.appendChild(line('cc-marker__price', formatPrice(hi)));
+      if (!flat) card.style.setProperty('--cc-under', JSON.stringify(formatPrice(lo)));
+      break;
+
+    case 'range-rail':
+      card.classList.add('cc-marker__card--rail');
+      card.appendChild(line('cc-marker__price', formatPrice(lo)));
+      if (!flat) {
+        card.appendChild(el('span', 'cc-marker__rail'));
+        card.appendChild(line('cc-marker__price', formatPrice(hi)));
+      }
+      break;
+
+    case 'median':
+    default:
+      single(formatPrice(mid));
+      break;
+  }
+  return card;
+}
+
 function createSingleElement(props) {
   const node = el('button', 'cc-marker cc-marker--single');
   node.type = 'button';
@@ -585,14 +703,19 @@ function createSingleElement(props) {
 
 function createClusterElement(props, medianPrice) {
   const count = Number(props.point_count) || 0;
+  const prices = Array.isArray(props.prices) ? props.prices : [];
+  const lo = prices.length ? Math.min(...prices) : medianPrice;
+  const hi = prices.length ? Math.max(...prices) : medianPrice;
   const node = el('button', 'cc-marker cc-marker--cluster');
   node.type = 'button';
+  node.classList.add(`cc-marker--label-${CLUSTER_LABEL}`);
   if (count >= DEEP_STACK_AT) node.classList.add('cc-marker--deep');
   node.setAttribute(
     'aria-label',
-    `${count} coffees here, median ${formatPrice(medianPrice)}. Zoom in.`
+    `${count} coffees here, median ${formatPrice(medianPrice)}, ` +
+      `from ${formatPrice(lo)} to ${formatPrice(hi)}. Zoom in.`
   );
-  node.appendChild(priceCard(medianPrice));
+  node.appendChild(clusterCard(lo, hi, medianPrice));
 
   const badge = el(
     'span',

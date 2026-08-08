@@ -50,6 +50,11 @@
  *      2. a state/city hint from an ancestor comment       -> confidence medium
  *      3. the overrides "prefer" map (the famous one)      -> confidence medium
  *      4. most populous state (NSW>VIC>QLD>WA>SA>TAS>ACT>NT) -> confidence low
+ *  - SUBREDDIT FLAIR, confidence medium: a location the commenter attached to their
+ *    own comment and published with it. Ranks below an in-text location (flair says
+ *    where someone is, not where this cup was bought) and above thread inheritance
+ *    (they volunteered it themselves). Junk flair is refused via overrides
+ *    flairStoplist, and a bare state token is too coarse to pin.
  *  - THREAD CONTEXT, both directions, both tagged confidence medium:
  *      a. a price with no location inherits from its nearest ancestor
  *      b. a price with no location inherits from the nearest descendant written by
@@ -142,6 +147,7 @@ const aliases = new Map(Object.entries(overrides.aliases || {}).map(([k, v]) => 
 const preferState = new Map(Object.entries(overrides.prefer || {}).map(([k, v]) => [norm(k), v]));
 const cityStates = new Map(Object.entries(overrides.cityStates || {}).map(([k, v]) => [norm(k), v]));
 const stateHints = new Map(Object.entries(overrides.stateHints || {}).map(([k, v]) => [norm(k), v]));
+const flairStoplist = new Set((overrides.flairStoplist || []).map(norm));
 const excludeIds = overrides.exclude || {};
 const forceIds = overrides.force || {};
 
@@ -427,6 +433,74 @@ function resolveAlias(alias) {
   return { ...base, lat: hit.lat, lon: hit.lon };
 }
 
+/**
+ * A location from the commenter's subreddit flair.
+ *
+ * Flair is a label the person attached to their own comment and published with
+ * it — self-declared, visible to everyone reading the thread, and sitting in
+ * the same payload as the comment body. That makes it a legitimate signal, and
+ * a stronger one than inheriting a neighbour's location, because the same
+ * person volunteered it.
+ *
+ * It is NOT as strong as naming the place in the comment itself: flair says
+ * where someone is, not where they bought this particular cup. So it caps at
+ * confidence "medium" and sits below a direct in-text match in the ranking.
+ *
+ * Flair is free text, so most of it is not a place at all ("Down Under") and
+ * some is a bare state, which is too coarse to pin. Both are refused:
+ * `flairStoplist` in data/overrides.json holds the junk, and a flair that is
+ * only a state token resolves to nothing.
+ */
+function flairPlace(node) {
+  const raw = (node.flair || '').trim();
+  if (!raw) return null;
+
+  const key = norm(raw);
+  if (!key || flairStoplist.has(key)) return null;
+  // "NSW" on its own names a third of a continent — not a pin.
+  if (STATE_TOKENS.has(key)) return null;
+
+  // "Brisbane, QLD" / "Geelong VIC" — split a trailing state off as a hint.
+  let name = raw;
+  let hint = null;
+  const m = raw.match(/^(.*?)[,\s]+(NSW|VIC|QLD|WA|SA|NT|TAS|ACT)$/i);
+  if (m) {
+    name = m[1].trim();
+    hint = m[2].toUpperCase();
+  }
+
+  // Regions ("Northern Rivers") are not gazetteer rows and must borrow a
+  // centre's coordinates while keeping their own name.
+  const alias = aliases.get(norm(name));
+  if (alias) {
+    const resolved = resolveAlias(alias);
+    if (resolved) return { ...resolved, confidence: 'medium', how: `flair "${raw}"` };
+  }
+
+  const rows = gazIndex.get(norm(name));
+  if (!rows || rows.length === 0) return null;
+  let hit = hint ? rows.find((r) => r.state === hint) : null;
+  if (!hit) {
+    if (rows.length > 1) {
+      // Ambiguous across states with nothing to disambiguate: prefer the
+      // overrides' famous-one map, else refuse rather than guess.
+      const preferred = preferState.get(norm(name));
+      hit = preferred ? rows.find((r) => r.state === preferred) : null;
+      if (!hit) return null;
+    } else {
+      hit = rows[0];
+    }
+  }
+  return {
+    name: hit.name,
+    state: hit.state,
+    lat: hit.lat,
+    lon: hit.lon,
+    confidence: 'medium',
+    how: `flair "${raw}"`,
+  };
+}
+
 /* ------------------------------------------------------------------ drinks */
 
 const DRINKS = [
@@ -556,6 +630,7 @@ function walk(children, parentId) {
       parentId,
       author: d.author,
       body: d.body || '',
+      flair: (d.author_flair_text || '').trim(),
       children: [],
       depth: parentId ? byId.get(parentId).depth + 1 : 1,
     };
@@ -571,6 +646,7 @@ const opNode = {
   parentId: null,
   author: post.author,
   body: (post.selftext || post.title || '').trim(),
+  flair: (post.author_flair_text || '').trim(),
   children: [],
   depth: 0,
   isPost: true,
@@ -601,6 +677,7 @@ const stats = {
   locDirect: 0,
   locAncestor: 0,
   locDescendant: 0,
+  locFlair: 0,
   locUnresolved: 0,
 };
 
@@ -734,6 +811,15 @@ for (const n of nodes) {
     confidence = n.place.confidence || 'high';
     how = n.place.how;
     stats.locDirect++;
+  }
+  if (!place) {
+    const fl = flairPlace(n);
+    if (fl) {
+      place = fl;
+      confidence = 'medium';
+      how = fl.how;
+      stats.locFlair++;
+    }
   }
   if (!place) {
     const anc = ancestorPlace(n);
@@ -877,6 +963,7 @@ L.push('locations resolved:');
 L.push(`  ${String(stats.locDirect).padStart(3)}  direct match (gazetteer / alias)`);
 L.push(`  ${String(stats.locAncestor).padStart(3)}  inherited from an ancestor comment`);
 L.push(`  ${String(stats.locDescendant).padStart(3)}  inherited from the author's own reply`);
+L.push(`  ${String(stats.locFlair).padStart(3)}  self-declared subreddit flair`);
 L.push(`mapped coffees                   ${coffees.length}`);
 L.push(`  confidence                     ${JSON.stringify(byConfidence)}`);
 L.push(`  by state                       ${JSON.stringify(byState)}`);

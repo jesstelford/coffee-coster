@@ -6,7 +6,7 @@
     "fetchedAt": "2026-08-08T07:36:25Z"
   },
   "generatedAt": "2026-08-08T07:36:25Z",
-  "count": 60,
+  "count": 63,
   "coffees": [
     {
       "id": "1vii42k",
@@ -24,8 +24,8 @@
     {
       "id": "p2dkicr",
       "price": 3,
-      "lat": -27.4677,
-      "lon": 153.0304,
+      "lat": -27.467,
+      "lon": 153.0302,
       "location": "Brisbane",
       "state": "QLD",
       "confidence": "low",
@@ -37,8 +37,8 @@
     {
       "id": "p2dklx1",
       "price": 6.4,
-      "lat": -33.8658,
-      "lon": 151.209,
+      "lat": -33.8656,
+      "lon": 151.2086,
       "location": "Sydney",
       "state": "NSW",
       "confidence": "high",
@@ -179,6 +179,20 @@
       "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2dmwwt/"
     },
     {
+      "id": "p2dmxmw",
+      "price": 8.5,
+      "lat": -28.8135,
+      "lon": 153.2773,
+      "location": "Northern Rivers",
+      "state": "NSW",
+      "confidence": "medium",
+      "drink": "cold brew",
+      "excerpt": "$8.50 cold brew with pistachio cold foam",
+      "author": "dissenting_cat",
+      "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2dmxmw/",
+      "approximate": true
+    },
+    {
       "id": "p2dmyl1",
       "price": 4.8,
       "lat": -33.9205,
@@ -231,6 +245,19 @@
       "author": "Hypno_Horse",
       "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2dok61/",
       "approximate": true
+    },
+    {
+      "id": "p2dom3k",
+      "price": 4.5,
+      "lat": -33.8695,
+      "lon": 151.2083,
+      "location": "Sydney",
+      "state": "NSW",
+      "confidence": "medium",
+      "drink": "cappuccino",
+      "excerpt": "I didn't get a coffee this morning but the last one I got was a large cappuccino with skim and it was $4.50. $7.10 is outrageous.",
+      "author": "somuchsong",
+      "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2dom3k/"
     },
     {
       "id": "p2donas",
@@ -537,6 +564,19 @@
       "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2eg3a8/"
     },
     {
+      "id": "p2egks9",
+      "price": 5.5,
+      "lat": -27.4701,
+      "lon": 153.03,
+      "location": "Brisbane",
+      "state": "QLD",
+      "confidence": "medium",
+      "drink": null,
+      "excerpt": "$5.50. Normally I don’t but this was at the daughter’s netball and they directly benefit from the profit. Just have to gamble on whether they burn it or make it too milky or…",
+      "author": "_ficklelilpickle",
+      "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/p2egks9/"
+    },
+    {
       "id": "p2egwsw",
       "price": 7.23,
       "lat": -34.9391,
@@ -565,8 +605,8 @@
     {
       "id": "p2ek4a6",
       "price": 5.3,
-      "lat": -27.4712,
-      "lon": 153.0285,
+      "lat": -27.4704,
+      "lon": 153.0257,
       "location": "Brisbane",
       "state": "QLD",
       "confidence": "high",
@@ -617,8 +657,8 @@
     {
       "id": "p2enccu",
       "price": 5,
-      "lat": -33.8712,
-      "lon": 151.2088,
+      "lat": -33.8709,
+      "lon": 151.2052,
       "location": "Sydney",
       "state": "NSW",
       "confidence": "high",
@@ -683,8 +723,8 @@
     {
       "id": "p2esrza",
       "price": 7.15,
-      "lat": -33.8675,
-      "lon": 151.2054,
+      "lat": -33.867,
+      "lon": 151.2057,
       "location": "Sydney",
       "state": "NSW",
       "confidence": "high",
@@ -790,8 +830,8 @@
     {
       "id": "p2f4l5x",
       "price": 3.5,
-      "lat": -27.4664,
-      "lon": 153.0257,
+      "lat": -27.4659,
+      "lon": 153.0262,
       "location": "Brisbane",
       "state": "QLD",
       "confidence": "high",

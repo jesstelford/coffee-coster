@@ -8,13 +8,13 @@ r/AskAnAustralian thread — ["How much was your coffee this morning"][thread]
 **median** price of the coffees inside it. There's a fuzzy suburb search so you can
 jump straight to your own neighbourhood.
 
-60 coffees are mapped. Prices run from $3.00 to $9.00, median $6.00.
+63 coffees are mapped. Prices run from $3.00 to $9.00, median $6.00.
 
 [thread]: https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/how_much_was_your_coffee_this_morning/
 
 ## Data caveat — read this first
 
-**This is not a survey.** It is 60 self-reported prices from one Reddit thread on one
+**This is not a survey.** It is 63 self-reported prices from one Reddit thread on one
 morning. Treat it as a conversation starter, not a price index.
 
 Specifically:
@@ -26,12 +26,12 @@ Specifically:
 - **Locations are parsed out of free text.** People wrote "Newtown" or "bayside
   Melbourne", not coordinates. Suburb names are matched against a gazetteer and
   ambiguous ones (there are a lot of Richmonds) are resolved by heuristics. Each
-  coffee carries a `confidence` of `high` / `medium` / `low` — currently 40 / 7 / 13.
-- **12 pins are region-level approximations.** When a commenter named a region
+  coffee carries a `confidence` of `high` / `medium` / `low` — currently 40 / 10 / 13.
+- **13 pins are region-level approximations.** When a commenter named a region
   ("Regional NSW", "Inner West Sydney") rather than a suburb, the pin borrows a
   nearby town's coordinates and is flagged `approximate`. It indicates a rough area,
   not an address. Nobody's actual cafe is at that dot.
-- **The mapped maximum is not the thread maximum.** 75 comments had a usable price
+- **The mapped maximum is not the thread maximum.** 72 comments had a usable price
   but no resolvable location, and were dropped. Higher prices exist in the thread
   than appear on the map. Any claim the UI makes is about the *highest mapped*
   price.
@@ -39,7 +39,7 @@ Specifically:
   bought overseas (7), per-kilo bean and equipment prices, and 11 manual overrides.
   Prices outside AUD 1.00–15.00 are treated as implausible for a single cup.
 
-Coverage is also lopsided: VIC 23, NSW 19, QLD 11, SA 4, WA 2, NT 1, and nothing at
+Coverage is also lopsided: VIC 23, NSW 21, QLD 12, SA 4, WA 2, NT 1, and nothing at
 all for TAS or ACT.
 
 ## Running it
@@ -73,6 +73,11 @@ their downloads under `data/raw/` so re-runs work offline.
    non-cup numbers, resolves locations by longest-first n-gram match against the
    gazetteer, and jitters coffees that share a suburb onto a ring around its
    centroid so they don't stack. Writes `public/data/coffees.json`.
+
+   Where a comment names no place, it falls back to the commenter's **subreddit
+   flair** — a location they attached to their own comment and published with it —
+   then to thread context. Flair is capped at `medium` confidence because it says
+   where a person is, not where that cup was bought.
 
 `data/overrides.json` is the hand-maintained fix file that steers step 3 — aliases
 for regions and nicknames, a `prefer` map for ambiguous duplicate place names,

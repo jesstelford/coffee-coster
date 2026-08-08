@@ -23,11 +23,25 @@ scripts in `scripts/` or `data/overrides.json` and re-run.
       "drink": "flat white",         // or null if not stated
       "excerpt": "Paid $7.10 for a flat white this am",  // <= 180 chars, cleaned
       "author": "PossumProofed",
-      "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/<id>/"
+      "permalink": "https://www.reddit.com/r/AskAnAustralian/comments/1vii42k/comment/<id>/",
+      "approximate": true             // OPTIONAL, present only when true (absent, never false)
     }
   ]
 }
 ```
+
+### `approximate`
+
+Set when the commenter named a *region* rather than a place — "regional NSW", "inner west
+Sydney", "outer suburbs of Melbourne". Those rows borrow a representative town's coordinates
+so they can be plotted at all, and keep the region's own wording in `location`. The pin is
+indicative, not a real address. Rows with an exact suburb omit the field entirely.
+
+### Caveat when surfacing statistics
+
+Prices here are the *mappable* subset. Many thread comments give a price but no location at
+all and are excluded, some of them higher than anything on the map. Any headline figure must
+therefore be worded as the highest/lowest **mapped** price, not the highest in the thread.
 
 ## 2) `public/data/suburbs.json` — the search gazetteer
 

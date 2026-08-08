@@ -1,0 +1,49 @@
+{
+  "_readme": "Human review of the coffee dataset. Advisory record, not pipeline input - the extractor's own rules produce the same outcome, so nothing here is wired into data/overrides.json. Kept so a later reader can see which rows a person actually looked at.",
+  "reviewedThread": "1vii42k",
+  "existingPinsKept": [
+    "p2dkicr",
+    "p2dm2s4",
+    "p2dnnlr",
+    "p2dok61",
+    "p2dud85",
+    "p2eamh1",
+    "p2ee10j",
+    "p2ef0g1",
+    "p2efr27",
+    "p2eo4dc",
+    "p2eugab",
+    "p2exlru",
+    "p2f1emp"
+  ],
+  "existingPinsDropped": [],
+  "unplacedPlaced": {
+    "p2egks9": "Brisbane, QLD",
+    "p2dmxmw": "Northern Rivers, NSW",
+    "p2dom3k": "Sydney, NSW"
+  },
+  "unplacedLeftOff": [
+    "p2e8pnc",
+    "p2dlb3f",
+    "p2drqfc",
+    "p2dynqf",
+    "p2dzvbz",
+    "p2dkss6",
+    "p2dl3hj",
+    "p2dlf0i",
+    "p2dm1ll",
+    "p2dm8ei",
+    "p2dn6cr",
+    "p2drnr7",
+    "p2due2e",
+    "p2e83oq",
+    "p2e8ob1",
+    "p2ekcer"
+  ],
+  "unplacedUndecided": 56,
+  "notes": [
+    "All 13 low-confidence / region-level pins were reviewed and kept; none dropped.",
+    "The 3 placed rows come from author_flair_text and are now produced by the extractor itself via flairPlace(), not by a manual force entry.",
+    "The 16 left-off rows were already excluded for having no resolvable location, so no override was added - adding one would move them into the 'manual override' bucket and misstate why they are off the map."
+  ]
+}

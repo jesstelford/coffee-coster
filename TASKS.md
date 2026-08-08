@@ -31,15 +31,15 @@ scraped from the Reddit thread
 ## Tasks
 
 ### 1. Project setup
-- [ ] Initialise Vite vanilla-JS project (`package.json`, `index.html`, `src/`)
-- [ ] Base mobile-first stylesheet with the tan palette (CSS custom properties)
-- [ ] `AGENTS.md` with project conventions
+- [x] Initialise Vite vanilla-JS project (`package.json`, `index.html`, `src/`)
+- [x] Base mobile-first stylesheet with the tan palette (CSS custom properties)
+- [x] `AGENTS.md` with project conventions
 - [ ] `README.md` with what/why/how-to-run
 
 ### 2. Data pipeline (scrape → clean → geocode)
-- [ ] Fetch full comment tree from Arctic Shift API (`scripts/fetch-thread.mjs`),
+- [x] Fetch full comment tree from Arctic Shift API (`scripts/fetch-thread.mjs`),
       cache raw JSON in `data/raw/`
-- [ ] Build an Australian localities gazetteer (suburb name, state, postcode, lat, lon)
+- [x] Build an Australian localities gazetteer (suburb name, state, postcode, lat, lon)
       from the free GeoNames AU postcode dataset (`scripts/build-gazetteer.mjs`)
 - [ ] Extraction script (`scripts/extract-coffees.mjs`):
   - [ ] Parse prices from free text (`$7.10`, `7.10`, `“$6 for a large”`, ranges, “free”)
@@ -52,21 +52,21 @@ scraped from the Reddit thread
 - [ ] Review the cleaned dataset for junk (spot check against thread)
 
 ### 3. Map
-- [ ] MapLibre map with OpenFreeMap tiles, centred on Australia, sensible mobile defaults
-- [ ] Load `coffees.json` into supercluster (map/reduce accumulating price arrays)
-- [ ] Render clusters/points as DOM markers on `moveend`/`zoomend`
-- [ ] Single-point marker: light-tan price card (e.g. `$4.50`)
-- [ ] Cluster marker: same price card showing the **median**, styled as top of a stack,
+- [x] MapLibre map with OpenFreeMap tiles, centred on Australia, sensible mobile defaults
+- [x] Load `coffees.json` into supercluster (map/reduce accumulating price arrays)
+- [x] Render clusters/points as DOM markers on `moveend`/`zoomend`
+- [x] Single-point marker: light-tan price card (e.g. `$4.50`)
+- [x] Cluster marker: same price card showing the **median**, styled as top of a stack,
       with a count badge
-- [ ] Tap cluster → zoom into cluster expansion zoom
-- [ ] Tap single point → popup with suburb, price and comment excerpt
+- [x] Tap cluster → zoom into cluster expansion zoom
+- [x] Tap single point → popup with suburb, price and comment excerpt
 
 ### 4. Search
-- [ ] Search bar fixed at top (overlay on map), tan-themed
-- [ ] Fuzzy suburb autocomplete (Fuse.js over gazetteer), keyboard + touch friendly
+- [x] Search bar fixed at top (overlay on map), tan-themed
+- [x] Fuzzy suburb autocomplete (Fuse.js over gazetteer), keyboard + touch friendly
 - [ ] Selecting a result flies the map to that suburb
-- [ ] Store last 3 searches in `localStorage`
-- [ ] Recent-searches chip row directly under the search bar (horizontal, single line)
+- [x] Store last 3 searches in `localStorage`
+- [x] Recent-searches chip row directly under the search bar (horizontal, single line)
 
 ### 5. Polish
 - [ ] Relaxed tan vibe throughout: warm background tints, rounded cards, soft shadows,

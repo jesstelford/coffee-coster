@@ -13,6 +13,75 @@
       content="A map of what a coffee actually costs around Australia, built from a Reddit thread."
     />
     <title>Coffee Coster — what a coffee costs around Australia</title>
+
+    <!--
+      Chrome that only main.js builds: the footer summary line, the
+      error variant of the loading pill, and the "approximate location"
+      note main.js grafts into map.js's popups. Everything else lives in
+      src/style.css, src/map.css and src/search.css.
+      Colours come from the tokens defined in src/style.css.
+    -->
+    <style>
+      /* ---- footer summary ("60 coffees mapped · median $6.00") ---- */
+
+      .attribution__summary {
+        margin-bottom: 5px;
+      }
+
+      .attribution__pill {
+        display: inline-block;
+        max-width: 100%;
+        padding: 5px 14px;
+        font-size: var(--text-small);
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        font-variant-numeric: tabular-nums;
+        color: var(--espresso-700);
+        background: rgba(245, 234, 220, 0.94);
+        border: 1px solid var(--tan-300);
+        border-radius: var(--radius-pill);
+        box-shadow: var(--shadow-sm), var(--edge-light);
+      }
+
+      /* Kept back on narrow phones so the pill stays one line. */
+      .attribution__pill-extra {
+        display: none;
+      }
+
+      @media (min-width: 480px) {
+        .attribution__pill-extra {
+          display: inline;
+        }
+      }
+
+      /* The credits are reference material, not something to read: keep
+         them quiet and let the summary pill carry the eye. */
+      .attribution__credits {
+        opacity: 0.9;
+      }
+
+      /* ---- loading pill, failure state ---------------------------- */
+
+      .loading.is-error {
+        /* `left: 50%` alone leaves a shrink-to-fit box half the viewport
+           wide, which turns the sentence into a narrow column. */
+        width: min(20rem, calc(100vw - 2 * var(--space-4)));
+        justify-content: center;
+        white-space: normal;
+        text-align: center;
+        border-radius: var(--radius-lg);
+      }
+
+      /* ---- popup note for region-level (approximate) pins --------- */
+
+      .cc-popup__approx {
+        margin: 0;
+        font-size: var(--text-small);
+        line-height: 1.45;
+        color: var(--espresso-500);
+        font-style: italic;
+      }
+    </style>
   </head>
   <body>
     <div id="map"></div>

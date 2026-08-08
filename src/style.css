@@ -25,15 +25,32 @@
   --radius-lg: 20px;
   --radius-pill: 999px;
 
-  /* --- soft, warm shadows -------------------------------------- */
+  /* --- soft, warm shadows --------------------------------------
+     Two-part shadows: a tight contact shadow that anchors the element
+     to the surface, plus a wide soft one for depth. Warm-tinted, never
+     neutral grey — a cool shadow on a tan surface reads as dirt. */
   --shadow-sm: 0 1px 2px rgba(74, 55, 42, 0.14);
-  --shadow-md: 0 4px 14px rgba(74, 55, 42, 0.14);
-  --shadow-lg: 0 10px 30px rgba(74, 55, 42, 0.14);
+  --shadow-md: 0 1px 2px rgba(74, 55, 42, 0.1), 0 4px 14px rgba(74, 55, 42, 0.13);
+  --shadow-lg: 0 2px 4px rgba(74, 55, 42, 0.1), 0 12px 32px rgba(74, 55, 42, 0.16);
+  /* Price cards sit *on* the map, so they get a touch more lift. */
+  --shadow-card: 0 1px 1px rgba(74, 55, 42, 0.16),
+    0 3px 10px rgba(74, 55, 42, 0.18);
+  /* A hairline of light along the top edge of raised tan surfaces. */
+  --edge-light: inset 0 1px 0 rgba(255, 253, 249, 0.75);
 
-  /* --- typography ---------------------------------------------- */
+  /* --- typography ----------------------------------------------
+     A small, deliberate scale — 11 / 12 / 13 / 15 / 16 / 20 — rather
+     than whatever each component felt like on the day. */
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, "Noto Sans", sans-serif;
   --line-height: 1.5;
+  --text-micro: 11px;
+  --text-small: 12px;
+  --text-label: 13px;
+  --text-body: 15px;
+  --text-input: 16px;
+  --text-price: 20px;
+  --tracking-caps: 0.07em;
 
   /* --- spacing / layout ---------------------------------------- */
   --space-1: 4px;
@@ -48,6 +65,9 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+
+  /* --- icons (masked, so they inherit the palette) ------------- */
+  --icon-search: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E");
 
   /* --- stacking ------------------------------------------------ */
   --z-map: 0;
@@ -195,12 +215,18 @@ a {
 .search-wrap {
   position: relative;
   width: 100%;
-  background: rgba(245, 234, 220, 0.82);
+  background: rgba(245, 234, 220, 0.86);
   border: 1px solid var(--tan-300);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  -webkit-backdrop-filter: blur(14px) saturate(1.25);
-  backdrop-filter: blur(14px) saturate(1.25);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md), var(--edge-light);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  backdrop-filter: blur(16px) saturate(1.3);
+  transition: box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.search-wrap:focus-within {
+  border-color: var(--tan-400);
+  box-shadow: var(--shadow-lg), var(--edge-light);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -209,17 +235,34 @@ a {
   }
 }
 
+/* A magnifier drawn in the palette, not a stock grey glyph. It is
+   decorative: the input keeps its own aria-label. */
+.search-wrap::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  pointer-events: none;
+  background-color: var(--espresso-500);
+  opacity: 0.75;
+  -webkit-mask: var(--icon-search) center / 18px 18px no-repeat;
+  mask: var(--icon-search) center / 18px 18px no-repeat;
+}
+
 #search-input {
   display: block;
   width: 100%;
   min-height: 48px; /* >= 44px touch target */
-  padding: var(--space-3) var(--space-4);
-  font-size: 16px; /* keeps iOS from zooming on focus */
+  padding: var(--space-3) var(--space-4) var(--space-3) 42px;
+  font-size: var(--text-input); /* 16px keeps iOS from zooming on focus */
   line-height: var(--line-height);
   color: var(--espresso-900);
   background: transparent;
   border: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-pill);
   appearance: none;
   -webkit-appearance: none;
 }
@@ -236,7 +279,7 @@ a {
 #search-input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-pill);
 }
 
 /* hide the native WebKit search clear/decoration */
@@ -261,8 +304,8 @@ a {
   overscroll-behavior: contain;
   background: var(--tan-100);
   border: 1px solid var(--tan-300);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg), var(--edge-light);
 }
 
 .search-results[hidden] {
@@ -286,13 +329,13 @@ a {
 }
 
 .search-results li:first-child {
-  border-top-left-radius: var(--radius-md);
-  border-top-right-radius: var(--radius-md);
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
 }
 
 .search-results li:last-child {
-  border-bottom-left-radius: var(--radius-md);
-  border-bottom-right-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 
 .search-results li:hover,
@@ -324,14 +367,51 @@ a {
   top: 50%;
   transform: translate(-50%, -50%);
   z-index: var(--z-loading);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   padding: var(--space-3) var(--space-5);
-  font-size: 15px;
+  font-size: var(--text-body);
   color: var(--espresso-700);
   background: var(--tan-100);
   border: 1px solid var(--tan-300);
   border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg), var(--edge-light);
   white-space: nowrap;
+}
+
+/* A slow warm pulse — a kettle ticking over, not a spinner. */
+.loading::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: cc-pulse 1.6s ease-in-out infinite;
+}
+
+.loading.is-error::before {
+  display: none;
+}
+
+@keyframes cc-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading::before {
+    animation: none;
+    opacity: 0.85;
+  }
 }
 
 .loading[hidden],
@@ -349,17 +429,26 @@ a {
   right: 0;
   bottom: 0;
   z-index: var(--z-attribution);
-  padding: var(--space-2) calc(var(--safe-right) + var(--space-3))
+  padding: var(--space-5) calc(var(--safe-right) + var(--space-3))
     calc(var(--safe-bottom) + var(--space-2))
     calc(var(--safe-left) + var(--space-3));
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: var(--text-micro);
+  line-height: 1.45;
   color: var(--espresso-500);
   text-align: right;
+  /*
+     A deep, mostly-opaque scrim. Price cards drifting into the bottom of
+     the viewport sit *behind* the footer (they live inside the map's
+     stacking context, so they cannot be lifted above it) — with a soft
+     fade they looked like rendering glitches. With a real scrim they read
+     as sliding under the credits, which is what they are doing.
+  */
   background: linear-gradient(
     to top,
-    rgba(251, 246, 239, 0.9),
-    rgba(251, 246, 239, 0)
+    rgba(251, 246, 239, 0.98) 0%,
+    rgba(251, 246, 239, 0.94) 55%,
+    rgba(251, 246, 239, 0.7) 80%,
+    rgba(251, 246, 239, 0) 100%
   );
   pointer-events: none;
 }
@@ -367,6 +456,7 @@ a {
 .attribution a {
   pointer-events: auto;
   color: var(--espresso-700);
+  text-decoration-color: var(--tan-400);
 }
 
 .attribution:empty {
@@ -388,6 +478,6 @@ a {
   }
 
   .attribution {
-    font-size: 12px;
+    font-size: var(--text-small);
   }
 }

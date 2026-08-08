@@ -54,6 +54,113 @@ const STATE_TOKENS = new Map([
   ['australian capital territory', 'ACT'],
 ]);
 
+/**
+ * Capital-city centroids with a rough metro population (millions).
+ *
+ * Australia reuses its suburb names relentlessly — there is a Newtown in
+ * four states, a St Kilda in three, a Carlton in four. Fuzzy score alone
+ * cannot separate them, so the one the user almost certainly meant (the
+ * inner-city suburb of a big city) kept losing to a rural namesake.
+ * Proximity to a capital, weighted by how big that capital is, is a decent
+ * stand-in for "how likely is this the one you meant" — and it needs no
+ * extra data in the gazetteer.
+ */
+const CAPITALS = [
+  { lat: -33.8688, lon: 151.2093, weight: 5.3 }, // Sydney
+  { lat: -37.8136, lon: 144.9631, weight: 5.2 }, // Melbourne
+  { lat: -27.4698, lon: 153.0251, weight: 2.6 }, // Brisbane
+  { lat: -31.9523, lon: 115.8613, weight: 2.2 }, // Perth
+  { lat: -34.9285, lon: 138.6007, weight: 1.4 }, // Adelaide
+  { lat: -35.2809, lon: 149.13, weight: 0.46 }, // Canberra
+  { lat: -42.8821, lon: 147.3272, weight: 0.25 }, // Hobart
+  { lat: -12.4634, lon: 130.8456, weight: 0.15 }, // Darwin
+];
+
+/**
+ * Optimal string alignment distance — Levenshtein plus adjacent
+ * transposition, which is the single most common way a suburb name gets
+ * mistyped ("newtwon"). Without the transposition rule "Newtown" and
+ * "Newton" look equally far from "newtwon"; with it they still tie, which
+ * is the point: it lets the prominence tie-break decide between them
+ * instead of an arbitrary Fuse score gap.
+ *
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+export function editDistance(a, b) {
+  const s = String(a);
+  const t = String(b);
+  if (s === t) return 0;
+  if (!s.length) return t.length;
+  if (!t.length) return s.length;
+
+  // Two rolling rows plus the one before them (needed for transpositions).
+  let prev2 = null;
+  let prev = new Array(t.length + 1);
+  for (let j = 0; j <= t.length; j++) prev[j] = j;
+
+  let current = new Array(t.length + 1);
+  for (let i = 1; i <= s.length; i++) {
+    current[0] = i;
+    for (let j = 1; j <= t.length; j++) {
+      const cost = s[i - 1] === t[j - 1] ? 0 : 1;
+      let best = Math.min(
+        current[j - 1] + 1, // insertion
+        prev[j] + 1, // deletion
+        prev[j - 1] + cost // substitution
+      );
+      if (i > 1 && j > 1 && s[i - 1] === t[j - 2] && s[i - 2] === t[j - 1]) {
+        best = Math.min(best, prev2[j - 2] + 1); // transposition
+      }
+      current[j] = best;
+    }
+    prev2 = prev;
+    prev = current;
+    current = new Array(t.length + 1);
+  }
+  return prev[t.length];
+}
+
+/** Radius at which a capital's pull has fallen to half. */
+const METRO_FALLOFF_KM = 25;
+
+/** Most a prominence bonus may move a Fuse score. Small on purpose: it
+ *  breaks ties between comparable matches, it never rescues a bad one. */
+const MAX_PROMINENCE_BONUS = 0.3;
+
+const KM_PER_DEG = 111.32;
+
+/** Edit distances at or above this are treated as equally bad. */
+const EDIT_BUCKET_CAP = 3;
+
+/**
+ * How "obviously meant" a coordinate is, as a score in roughly [0, 5.3].
+ * Peaks in the middle of the biggest capitals and decays with distance.
+ * @param {number} lat
+ * @param {number} lon
+ */
+export function prominence(lat, lon) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return 0;
+  // Equirectangular is plenty at this scale and far cheaper than haversine.
+  const cosLat = Math.cos((lat * Math.PI) / 180);
+  let best = 0;
+  for (const c of CAPITALS) {
+    const dy = (lat - c.lat) * KM_PER_DEG;
+    const dx = (lon - c.lon) * KM_PER_DEG * cosLat;
+    const d = Math.sqrt(dx * dx + dy * dy) / METRO_FALLOFF_KM;
+    const pull = c.weight / (1 + d * d);
+    if (pull > best) best = pull;
+  }
+  return best;
+}
+
+/** Prominence squashed into the [0, MAX_PROMINENCE_BONUS] range. */
+function prominenceBonus(lat, lon) {
+  const p = prominence(lat, lon);
+  return MAX_PROMINENCE_BONUS * (p / (p + 1));
+}
+
 /* ------------------------------------------------------------------ */
 /* pure logic                                                          */
 /* ------------------------------------------------------------------ */
@@ -171,8 +278,9 @@ function splitQuery(query) {
  *
  * Fuse gives us a candidate pool; we then re-rank so exact and
  * prefix matches beat mid-word fuzzy matches (so "st kilda" puts
- * "St Kilda" above "St Kilda East"), and a state mentioned in the
- * query wins a tie-break.
+ * "St Kilda" above "St Kilda East"), a state mentioned in the query
+ * wins a tie-break, and — among otherwise equally good matches — the
+ * one in a big city's metro beats its rural namesake.
  *
  * @param {ReturnType<typeof buildIndex>} index
  * @param {string} query
@@ -194,19 +302,32 @@ export function searchSuburbs(index, query, limit = MAX_RESULTS) {
   const scored = pool.map((hit, order) => {
     const rec = hit.item;
     const lower = rec.name.toLowerCase();
+    const place = index.suburbs[rec.i];
 
     let tier = 3;
     if (lower === target) tier = 0;
     else if (lower.startsWith(target)) tier = 1;
     else if (lower.includes(target)) tier = 2;
 
-    // A state named in the query is a strong signal; nudge matches up.
-    const stateBonus = qState && rec.state === qState ? -0.25 : 0;
+    // A state named in the query is an explicit instruction, not a hint:
+    // "st kilda sa" must not hand back the Melbourne one.
+    const stateMiss = qState && rec.state !== qState ? 1 : 0;
+
+    // How badly the name was mistyped. Capped, because past a few
+    // keystrokes the exact distance stops meaning anything and we would
+    // rather let prominence break the tie than rank by name length.
+    const edit = Math.min(editDistance(target, lower), EDIT_BUCKET_CAP);
+
+    // Lower sorts first, so prominence is negated.
+    const city = place ? -prominenceBonus(place.lat, place.lon) : 0;
 
     return {
       rec,
       tier,
-      score: (hit.score ?? 0) + stateBonus,
+      stateMiss,
+      edit,
+      city,
+      score: hit.score ?? 0,
       order,
     };
   });
@@ -214,6 +335,9 @@ export function searchSuburbs(index, query, limit = MAX_RESULTS) {
   scored.sort(
     (a, b) =>
       a.tier - b.tier ||
+      a.stateMiss - b.stateMiss ||
+      a.edit - b.edit ||
+      a.city - b.city ||
       a.score - b.score ||
       a.rec.name.length - b.rec.name.length ||
       a.order - b.order

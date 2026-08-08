@@ -39,14 +39,25 @@ const AU_CENTER = [134, -28];
 const AU_ZOOM = 3.1;
 
 /**
- * A loose leash so nobody ends up staring at the middle of the Pacific.
- * Deliberately generous: MapLibre zooms *in* to keep the viewport inside
- * `maxBounds`, so a tight box would stop tall phones ever seeing all of
- * Australia at once.
+ * A loose leash so nobody ends up staring at the middle of the Atlantic.
+ *
+ * The latitude range is absurdly generous *on purpose*. MapLibre enforces
+ * `maxBounds` by zooming the camera **in** until the viewport fits inside
+ * it, and it does that silently, after `fitBounds` has run. Australia is
+ * 42° wide and 34° tall, so on a tall phone the opening fit is decided by
+ * width and leaves a lot of slack above and below — enough that the top of
+ * a 375x812 viewport reached ~30°N. Against the old 18°N ceiling that
+ * tripped the constraint, MapLibre zoomed back in, and the fit padding
+ * meant to keep the east- and west-coast price cards on screen was
+ * quietly thrown away with it.
+ *
+ * Longitude still does the real work here: 85°E-180°E cannot be escaped,
+ * and at `MIN_ZOOM` that span is wider than any viewport, so it never
+ * forces a zoom of its own.
  */
 const AU_MAX_BOUNDS = [
-  [85, -62],
-  [180, 18],
+  [85, -78],
+  [180, 40],
 ];
 
 const MIN_ZOOM = 2.2;
@@ -62,9 +73,80 @@ const DEFAULT_FLY_ZOOM = 11;
 /** Clusters at or above this many coffees get a deeper card stack. */
 const DEEP_STACK_AT = 10;
 
+/**
+ * How long to wait for the style before showing the map chrome anyway.
+ * Short on purpose: `main.js` no longer blocks the search box on this,
+ * so the only cost of giving up early is a map that fills in a beat later.
+ */
+const STYLE_WAIT_MS = 2500;
+
+/**
+ * If the vector source still has not loaded after this long, something is
+ * structurally wrong (a missing worker chunk, a blocked host) rather than
+ * merely slow — say so loudly instead of showing a silently empty map.
+ */
+const TILE_CANARY_MS = 9000;
+
+/** The vector source id every OpenMapTiles-derived style uses. */
+const VECTOR_SOURCE_ID = 'openmaptiles';
+
+/** Never frame tighter than this, however clustered the data is. */
+const MIN_FIT_SPAN_DEG = 6;
+
 /* ------------------------------------------------------------
    Pure helpers (unit-tested by scripts/test-cluster.mjs)
    ------------------------------------------------------------ */
+
+/**
+ * The box the opening view should frame.
+ *
+ * Deliberately the *coffees*, not the continent. Australia is 42° wide and
+ * 34° tall; a phone is the other way round, so fitting the whole landmass
+ * on a 375px screen spends the zoom budget on empty Southern Ocean and
+ * leaves the price cards tiny. The data is a little narrower than the
+ * continent (nothing west of Perth, nothing north of Darwin), and framing
+ * that instead buys back roughly 10% of the scale while still showing the
+ * entire mainland, because the viewport is wider than the padded fit box.
+ *
+ * Falls back to the continent when the data cannot supply a sane box.
+ * @param {Array<object>} coffees
+ * @returns {[[number, number], [number, number]]}
+ */
+export function fitBoundsFor(coffees) {
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
+  let count = 0;
+
+  for (const coffee of Array.isArray(coffees) ? coffees : []) {
+    const lat = Number(coffee?.lat);
+    const lon = Number(coffee?.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (Math.abs(lat) > 85 || Math.abs(lon) > 180) continue;
+    count++;
+    if (lon < west) west = lon;
+    if (lon > east) east = lon;
+    if (lat < south) south = lat;
+    if (lat > north) north = lat;
+  }
+
+  if (count < 2) return AU_BOUNDS;
+
+  // Pad a degenerate (single-city) box out to something legible.
+  const grow = (lo, hi) => {
+    const short = MIN_FIT_SPAN_DEG - (hi - lo);
+    if (short <= 0) return [lo, hi];
+    return [lo - short / 2, hi + short / 2];
+  };
+  [west, east] = grow(west, east);
+  [south, north] = grow(south, north);
+
+  return [
+    [west, clamp(south, -85, 85)],
+    [east, clamp(north, -85, 85)],
+  ];
+}
 
 /**
  * Median of a list of numbers. Even-length sets return the mean of the
@@ -177,16 +259,22 @@ function placeLabel(props) {
 }
 
 /**
- * Fit-padding that leaves room for the search overlay without ever eating
- * so much of the viewport that the fit inverts.
+ * Fit-padding that leaves room for the page chrome without ever eating so
+ * much of the viewport that the fit inverts.
+ *
+ * The left/right numbers are deliberately about half a price card wide
+ * (cards are ~76px and centre-anchored on their point), so a marker sitting
+ * on the eastern or western edge of the fitted bounds still has both its
+ * price and its count badge on screen. The bottom number clears the
+ * attribution footer.
  */
-function fitPadding(width, height) {
+export function fitPadding(width, height) {
   const wide = width >= 768;
   const raw = wide
-    ? { top: 24, bottom: 40, left: Math.min(width * 0.34, 420), right: 32 }
-    : { top: 84, bottom: 52, left: 18, right: 18 };
+    ? { top: 28, bottom: 64, left: Math.min(width * 0.34, 420), right: 48 }
+    : { top: 92, bottom: 104, left: 48, right: 48 };
   const maxH = width * 0.45;
-  const maxV = height * 0.35;
+  const maxV = height * 0.42;
   const scaleH = raw.left + raw.right > maxH ? maxH / (raw.left + raw.right) : 1;
   const scaleV = raw.top + raw.bottom > maxV ? maxV / (raw.top + raw.bottom) : 1;
   return {
@@ -195,6 +283,195 @@ function fitPadding(width, height) {
     left: Math.round(raw.left * scaleH),
     right: Math.round(raw.right * scaleH),
   };
+}
+
+/* ------------------------------------------------------------
+   Latte basemap tint
+
+   OpenFreeMap Liberty is a fine general-purpose style, but its
+   cornflower water and highlighter-yellow motorways fight the tan
+   chrome. Rather than ship a whole style document we recolour the
+   layers we care about once the style has loaded, keyed off Liberty's
+   very regular layer ids (`road_*`, `bridge_*`, `tunnel_*`, `label_*`).
+
+   Only *colours* are touched — never widths, filters or z-order — so
+   the map stays as legible as it was, just warmer.
+   ------------------------------------------------------------ */
+
+/** Basemap-only palette. Deliberately a shade off the UI tokens so the
+ *  price cards still read as objects sitting *on* the map. */
+const LATTE = {
+  land: '#f7f0e4',
+  water: '#aec8d3',
+  waterLine: '#a2bfcb',
+  green: '#dbe4c0',
+  greenSoft: '#e3e9d3',
+  sand: '#f0e4c9',
+  landuse: '#efe5d3',
+  building: '#e7dac4',
+  buildingEdge: '#d9c7ab',
+  roadFill: '#fffdf8',
+  roadMajor: '#f7e9cf',
+  motorway: '#f1daac',
+  casing: '#d9c09c',
+  path: '#e9dcc5',
+  rail: '#c4b29a',
+  boundary: '#b0916c',
+  label: '#372718',
+  labelMuted: '#6b5040',
+  halo: '#f9f3e8',
+};
+
+/**
+ * Decide how a single Liberty layer should be recoloured.
+ * Returns a `{ paintProperty: value }` bag, or null to leave it alone.
+ *
+ * Exported for eyeballing/testing; `applyLatteTint` is the only caller.
+ * @param {{id:string,type:string}} layer
+ */
+export function latteTintFor(layer) {
+  const id = String(layer?.id || '');
+  const type = String(layer?.type || '');
+
+  if (type === 'background') return { 'background-color': LATTE.land };
+
+  // The low-zoom shaded-relief raster: desaturate it so the continent
+  // reads as warm paper rather than a green/khaki satellite image.
+  if (type === 'raster') {
+    return {
+      'raster-saturation': -0.45,
+      'raster-contrast': -0.08,
+      // Kept a little stronger than Liberty's default at low zoom: the
+      // opening view is almost all continent outline, and without some
+      // relief under it Australia reads as a blank cut-out.
+      'raster-opacity': [
+        'interpolate',
+        ['exponential', 1.5],
+        ['zoom'],
+        0,
+        0.7,
+        6,
+        0.08,
+      ],
+    };
+  }
+
+  if (type === 'fill' || type === 'fill-extrusion') {
+    const prop = type === 'fill' ? 'fill-color' : 'fill-extrusion-color';
+    if (id === 'water') return { [prop]: LATTE.water };
+    if (/^building/.test(id)) {
+      return type === 'fill'
+        ? { 'fill-color': LATTE.building, 'fill-outline-color': LATTE.buildingEdge }
+        : { 'fill-extrusion-color': LATTE.building };
+    }
+    if (/sand/.test(id)) return { [prop]: LATTE.sand };
+    if (/ice/.test(id)) return { [prop]: '#f4f1ea' };
+    if (/wetland/.test(id)) return { [prop]: LATTE.greenSoft };
+    if (/^park$|wood|grass|forest/.test(id)) return { [prop]: LATTE.green };
+    if (/aeroway/.test(id)) return { [prop]: '#ece1d0' };
+    // road_area_pattern paints with fill-pattern; recolouring does nothing.
+    if (/pattern/.test(id)) return null;
+    if (/landuse|landcover/.test(id)) return { [prop]: LATTE.landuse };
+    return null;
+  }
+
+  if (type === 'line') {
+    if (/waterway/.test(id)) return { 'line-color': LATTE.waterLine };
+    if (/boundary/.test(id)) return { 'line-color': LATTE.boundary };
+    if (/rail/.test(id)) return { 'line-color': LATTE.rail };
+    if (/park_outline/.test(id)) return { 'line-color': '#cdd7b4' };
+    if (/_casing$/.test(id)) return { 'line-color': LATTE.casing };
+    if (/path_pedestrian/.test(id)) return { 'line-color': LATTE.path };
+    if (/motorway/.test(id)) return { 'line-color': LATTE.motorway };
+    if (/trunk|primary|secondary|tertiary/.test(id)) {
+      return { 'line-color': LATTE.roadMajor };
+    }
+    if (/aeroway/.test(id)) return { 'line-color': '#e3d6c2' };
+    if (/road|street|link|minor|service|track/.test(id)) {
+      return { 'line-color': LATTE.roadFill };
+    }
+    return null;
+  }
+
+  if (type === 'symbol') {
+    // Place names carry the map; everything else is supporting text.
+    const primary = /^label_(city|city_capital|town|state|country)/.test(id);
+    return {
+      'text-color': primary ? LATTE.label : LATTE.labelMuted,
+      'text-halo-color': LATTE.halo,
+      'text-halo-width': 1.2,
+      'text-halo-blur': 0.6,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Walk the loaded style and apply `latteTintFor` to every layer.
+ * Defensive throughout: a style that renames a layer, or a paint
+ * property a layer does not support, must never break the map.
+ * @param {import('maplibre-gl').Map} map
+ */
+function applyLatteTint(map) {
+  let layers;
+  try {
+    layers = map.getStyle()?.layers;
+  } catch {
+    return;
+  }
+  if (!Array.isArray(layers)) return;
+
+  for (const layer of layers) {
+    hardenFilter(map, layer);
+
+    const paint = latteTintFor(layer);
+    if (!paint) continue;
+    for (const [property, value] of Object.entries(paint)) {
+      try {
+        map.setPaintProperty(layer.id, property, value);
+      } catch {
+        /* layer gone, or property not supported here — skip it */
+      }
+    }
+  }
+}
+
+/**
+ * Rewrite `["get", "ref_length"]` inside a *filter* to a guaranteed number.
+ *
+ * Liberty's three road-shield layers filter on `["<=", ref_length, 6]`, but
+ * plenty of OSM ways carry no `ref` at all, so the property arrives as null
+ * and MapLibre logs a type warning for every one of them — a steady drip of
+ * console noise from the moment real tiles start rendering.
+ *
+ * The substitute value must be *larger* than any threshold in the style, so
+ * a ref-less way still fails the filter exactly as it does today. Fall back
+ * to 0 and those ways start passing, and then the layer asks the sprite for
+ * an icon named "road_" that does not exist — trading one warning for
+ * another. (The layer's own `icon-image` reads `ref_length` too; that is
+ * left alone, since only features that pass the filter ever reach it.)
+ * @param {unknown} node
+ */
+const REF_LENGTH_ABSENT = 99;
+
+function hardenNullableNumbers(node) {
+  if (!Array.isArray(node)) return node;
+  if (node.length === 2 && node[0] === 'get' && node[1] === 'ref_length') {
+    return ['to-number', ['coalesce', ['get', 'ref_length'], REF_LENGTH_ABSENT]];
+  }
+  return node.map(hardenNullableNumbers);
+}
+
+function hardenFilter(map, layer) {
+  const filter = layer?.filter;
+  if (!Array.isArray(filter)) return;
+  if (!JSON.stringify(filter).includes('ref_length')) return;
+  try {
+    map.setFilter(layer.id, hardenNullableNumbers(filter));
+  } catch {
+    /* the style changed shape — leave the filter alone */
+  }
 }
 
 /* ------------------------------------------------------------
@@ -306,6 +583,12 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
     throw new Error(`initMap: map container "${container}" was not found`);
   }
 
+  const viewportPadding = () =>
+    fitPadding(
+      node.clientWidth || window.innerWidth || 375,
+      node.clientHeight || window.innerHeight || 667
+    );
+
   const width = node.clientWidth || window.innerWidth || 375;
   const height = node.clientHeight || window.innerHeight || 667;
 
@@ -314,7 +597,7 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
     style: MAP_STYLE_URL,
     center: AU_CENTER,
     zoom: AU_ZOOM,
-    bounds: AU_BOUNDS,
+    bounds: fitBoundsFor(coffees),
     fitBoundsOptions: { padding: fitPadding(width, height), duration: 0 },
     maxBounds: AU_MAX_BOUNDS,
     minZoom: MIN_ZOOM,
@@ -351,6 +634,14 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
   /** key -> maplibregl.Marker, so panning reuses rather than rebuilds. */
   const markers = new Map();
 
+  /*
+   * closeOnMove is deliberately off, and replaced below by a listener that
+   * only fires on *user-initiated* movement. A popup left anchored after
+   * the user pans ends up floating over markers it never belonged to and
+   * swallowing their taps — but MapLibre's own closeOnMove cannot tell a
+   * drag from the small programmatic nudge that keeps the popup on screen,
+   * and would slam it shut the instant it opened near an edge.
+   */
   const popup = new Popup({
     className: 'cc-popup',
     closeButton: true,
@@ -359,6 +650,11 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
     maxWidth: '278px',
     offset: 20,
     focusAfterOpen: true,
+  });
+
+  map.on('movestart', (event) => {
+    // originalEvent is only set when a gesture drove the camera.
+    if (event?.originalEvent) popup.remove();
   });
 
   function visibleBbox() {
@@ -387,14 +683,61 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
     return `p:${id}`;
   }
 
+  /**
+   * Slide the camera just far enough that the whole popup is on screen.
+   *
+   * A 278px popup beside a marker near a 375px-wide viewport's edge will
+   * always hang off it — no anchor MapLibre can pick and no max-width that
+   * still fits an excerpt will save it. Measuring the popup's real box and
+   * panning by the overflow handles every anchor without any trigonometry,
+   * and pans by nothing at all in the common case.
+   */
+  function keepPopupOnScreen() {
+    const element = popup.getElement?.();
+    if (!element) return;
+
+    const box = element.getBoundingClientRect();
+    if (!box.width || !box.height) return;
+    const view = node.getBoundingClientRect();
+    const pad = viewportPadding();
+    const gutter = 10;
+
+    const left = view.left + gutter;
+    const right = view.right - gutter;
+    // Clear the search bar at the top and the attribution at the bottom.
+    const top = view.top + pad.top;
+    const bottom = view.bottom - gutter;
+
+    let dx = 0;
+    let dy = 0;
+    if (box.width <= right - left) {
+      if (box.left < left) dx = box.left - left;
+      else if (box.right > right) dx = box.right - right;
+    }
+    if (box.height <= bottom - top) {
+      if (box.top < top) dy = box.top - top;
+      else if (box.bottom > bottom) dy = box.bottom - bottom;
+    }
+    if (!dx && !dy) return;
+
+    // panBy moves the *centre* by the offset, so the content moves the
+    // opposite way — which is exactly the sign the overflow already has.
+    map.panBy([dx, dy], {
+      duration: prefersReducedMotion() ? 0 : 220,
+      essential: true,
+    });
+  }
+
   function openPointPopup(feature) {
     popup
       .setLngLat(feature.geometry.coordinates)
       .setDOMContent(buildPopupContent(feature.properties))
       .addTo(map);
+    keepPopupOnScreen();
   }
 
   function zoomIntoCluster(clusterId, coordinates) {
+    popup.remove();
     let target;
     try {
       target = index.getClusterExpansionZoom(clusterId);
@@ -402,7 +745,9 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
       target = map.getZoom() + 2;
     }
     const zoom = clamp(target, map.getZoom() + 0.5, MAX_ZOOM);
-    const camera = { center: coordinates, zoom };
+    // Padding keeps the expanded cluster in the clear band between the
+    // search bar and the attribution footer, not under either of them.
+    const camera = { center: coordinates, zoom, padding: viewportPadding() };
     if (prefersReducedMotion()) map.jumpTo(camera);
     else map.easeTo({ ...camera, duration: 520, essential: true });
   }
@@ -465,6 +810,33 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
     }
   }
 
+  // Recolour as soon as the style document is in — this fires well before
+  // the first tiles finish, so the map paints warm from its very first frame.
+  let tinted = false;
+  const tintOnce = () => {
+    // `styledata` can fire while the document is still being assembled,
+    // so re-check rather than trusting the event.
+    if (tinted || !map.isStyleLoaded()) return;
+    tinted = true;
+    map.off('styledata', tintOnce);
+    applyLatteTint(map);
+  };
+  map.on('styledata', tintOnce);
+  tintOnce();
+
+  map.on('error', (event) => {
+    console.warn('Coffee Coster: map error', event?.error || event);
+  });
+
+  // Did a single vector tile ever finish? `isSourceLoaded()` is no good
+  // for this — it reads false whenever the camera is mid-flight — but a
+  // `sourcedata` event carrying a tile only ever fires after the worker
+  // has parsed one, which is exactly the thing that used to be broken.
+  let sawVectorTile = false;
+  map.on('sourcedata', (event) => {
+    if (event?.sourceId === VECTOR_SOURCE_ID && event?.tile) sawVectorTile = true;
+  });
+
   await new Promise((resolve) => {
     if (map.loaded()) {
       resolve();
@@ -477,13 +849,33 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
       clearTimeout(timer);
       resolve();
     };
-    // Don't hold the app hostage if OpenFreeMap is having a bad day.
-    const timer = setTimeout(done, 8000);
+    // Don't hold the markers hostage if OpenFreeMap is having a bad day.
+    const timer = setTimeout(done, STYLE_WAIT_MS);
     map.once('load', done);
-    map.once('error', (event) => {
-      console.warn('Coffee Coster: map error', event?.error || event);
-    });
   });
+
+  tintOnce();
+
+  /*
+   * Canary for the failure mode that has no console error of its own: if
+   * MapLibre's worker chunk is missing from the build the tile pipeline
+   * dies silently and every zoom above ~6 renders blank. Nothing throws,
+   * nothing 500s — the only symptom is that the vector source never loads.
+   */
+  setTimeout(() => {
+    if (sawVectorTile) return;
+    // No source by that name means a different style, not a broken one.
+    try {
+      if (!map.getSource(VECTOR_SOURCE_ID)) return;
+    } catch {
+      return;
+    }
+    console.error(
+      `Coffee Coster: not one vector tile parsed in ${TILE_CANARY_MS}ms — the ` +
+        'basemap will be blank above low zooms. This is usually maplibre-gl’s ' +
+        'worker chunk missing from the build (see setWorkerUrl in src/main.js).'
+    );
+  }, TILE_CANARY_MS);
 
   render();
   map.on('moveend', render);
@@ -510,12 +902,21 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
 
     popup.remove();
 
+    const padding = viewportPadding();
+
     if (prefersReducedMotion()) {
-      map.jumpTo({ center, zoom: targetZoom });
+      map.jumpTo({ center, zoom: targetZoom, padding });
       render();
       return;
     }
-    map.flyTo({ center, zoom: targetZoom, speed: 1.2, curve: 1.42, essential: true });
+    map.flyTo({
+      center,
+      zoom: targetZoom,
+      padding,
+      speed: 1.2,
+      curve: 1.42,
+      essential: true,
+    });
   }
 
   return { map, flyToLocation };

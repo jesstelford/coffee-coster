@@ -34,6 +34,8 @@ See `TASKS.md` for the build plan and current status.
 
 ## Conventions
 
+- **Work on `main`.** It is the default branch and what GitHub Pages deploys from
+  (`/docs`). Commit and push there directly; no feature branch unless asked.
 - Mobile-first: write base styles for small screens, use `min-width` media queries to scale up.
 - Design language: relaxed tan/latte palette. All colours come from CSS custom properties in
   `src/style.css` (`--tan-*`, `--espresso-*`); never hard-code new hex values in components.

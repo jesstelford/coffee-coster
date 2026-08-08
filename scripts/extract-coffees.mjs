@@ -83,6 +83,16 @@ const OUT = path.join(ROOT, 'public/data/coffees.json');
 
 const DEBUG = process.env.DEBUG_EXTRACT === '1';
 
+/**
+ * `--report <path>` writes a JSON side-report of what did NOT make the map.
+ * The map output is unaffected. Its main use is the unplaced-price review:
+ * comments that state a real price but no location the gazetteer could resolve.
+ */
+const REPORT_AT = (() => {
+  const i = process.argv.indexOf('--report');
+  return i !== -1 && process.argv[i + 1] ? path.resolve(process.argv[i + 1]) : null;
+})();
+
 const MIN_PRICE = 1.0;
 const MAX_PRICE = 15.0;
 const HOME_PRICE_CEILING = 3.5;
@@ -745,7 +755,13 @@ for (const n of nodes) {
   }
   if (!place) {
     stats.locUnresolved++;
-    dropped.push({ id: n.id, why: 'price but no resolvable location' });
+    dropped.push({
+      id: n.id,
+      why: 'price but no resolvable location',
+      // Carried so `--report` can hand these to a location-review pass: the
+      // price is already known and trustworthy, only the place is missing.
+      price: pi.kind === 'ok' ? pi.price : null,
+    });
     continue;
   }
   if (confidence !== 'low' && place.confidence === 'low') confidence = 'low';
@@ -868,6 +884,34 @@ L.push(
   `price  min $${prices[0]?.toFixed(2)}  median $${median.toFixed(2)}  mean $${mean.toFixed(2)}  max $${prices[prices.length - 1]?.toFixed(2)}`
 );
 L.push(`wrote ${path.relative(ROOT, OUT)}`);
+
+if (REPORT_AT) {
+  // Everything a reviewer needs to judge an unplaced price, and nothing more:
+  // the comment's own text plus its immediate thread context. Author handles
+  // are deliberately NOT included — the point is to recover a price:location
+  // pair, not to work out where a particular person lives.
+  const unplaced = dropped
+    .filter((d) => d.why === 'price but no resolvable location')
+    .map((d) => {
+      const n = byId.get(d.id);
+      const parent = n.parentId ? byId.get(n.parentId) : null;
+      const replies = (n.children || []).map((cid) => byId.get(cid)).filter(Boolean);
+      return {
+        id: d.id,
+        price: d.price,
+        text: n.clean,
+        parentText: parent ? truncate(parent.clean, 400) : null,
+        replyTexts: replies.map((r) => truncate(r.clean, 300)).slice(0, 6),
+        siblingTextsBySameAuthor: nodes
+          .filter((o) => o !== n && o.author && o.author === n.author && !o.dead)
+          .map((o) => truncate(o.clean, 300))
+          .slice(0, 6),
+      };
+    });
+  fs.writeFileSync(REPORT_AT, JSON.stringify({ generatedAt: stamp, count: unplaced.length, unplaced }, null, 2));
+  L.push(`wrote ${path.relative(ROOT, REPORT_AT)} (${unplaced.length} unplaced prices)`);
+}
+
 console.log(L.join('\n'));
 
 if (DEBUG) {

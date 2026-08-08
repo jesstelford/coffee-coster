@@ -111,8 +111,11 @@
   align-items: center;
   gap: 6px;
   max-width: 46vw;
-  min-height: 34px;
-  padding: 6px var(--space-3);
+  /* 44px is the touch-target floor. The row is a single non-wrapping line,
+     so the chip's own height *is* the row's height — growing it costs the
+     map ten pixels, and nothing else. */
+  min-height: 44px;
+  padding: 4px var(--space-4);
   font-size: 13px;
   line-height: 1.5;
   color: var(--espresso-700);

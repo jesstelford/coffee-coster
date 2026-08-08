@@ -63,6 +63,22 @@ const AU_MAX_BOUNDS = [
 const MIN_ZOOM = 2.2;
 const MAX_ZOOM = 17;
 
+/** The one breakpoint this module cares about; matches src/style.css. */
+const WIDE_BREAKPOINT = 768;
+
+/**
+ * Opening-view crop for portrait screens — see `openingBounds`.
+ *
+ * 128.5°E is the WA/NT/SA border. East of it sits every coffee but the two
+ * in Perth, plus the whole east coast, the Top End (Darwin is 130.8°E),
+ * Cape York and Tasmania — so the crop reads as "Australia", not as a
+ * slice of one state.
+ */
+const PORTRAIT_FOCUS_WEST = 128.5;
+
+/** …but never crop so hard that the opening view stops being continental. */
+const MIN_OPENING_LON_SPAN = 18;
+
 /** Clustering feels right at ~60px radius; stop clustering past z16. */
 const CLUSTER_RADIUS = 60;
 const CLUSTER_MAX_ZOOM = 16;
@@ -98,7 +114,8 @@ const MIN_FIT_SPAN_DEG = 6;
    ------------------------------------------------------------ */
 
 /**
- * The box the opening view should frame.
+ * The box that holds every coffee — the starting point for the opening
+ * view, which `openingBounds` then adapts to the viewport's shape.
  *
  * Deliberately the *coffees*, not the continent. Australia is 42° wide and
  * 34° tall; a phone is the other way round, so fitting the whole landmass
@@ -145,6 +162,47 @@ export function fitBoundsFor(coffees) {
   return [
     [west, clamp(south, -85, 85)],
     [east, clamp(north, -85, 85)],
+  ];
+}
+
+/**
+ * The box the *opening* camera should frame, given the viewport width.
+ *
+ * On a wide screen this is just `fitBoundsFor`: a 42°-wide continent in a
+ * landscape viewport frames beautifully, and the desktop layout already
+ * uses the left third for the search panel.
+ *
+ * A phone is the other way round. Fitting all 38° of data longitude into
+ * 375px is decided entirely by width, and the ~30° of latitude it leaves
+ * over fills barely a third of the screen height — the rest is Southern
+ * Ocean below and, above the search bar, Indonesia and the Philippines.
+ * Cropping the western third fixes the aspect mismatch at its source. On
+ * a 375x812 screen that is measurably better: 1.8x the scale, the price
+ * cards spread over 50% of the viewport height instead of 30%, and water
+ * drops from 55% of the pixels to 37%.
+ *
+ * The two Perth coffees are the only records that fall outside the crop,
+ * and only for the opening frame — panning or zooming out reaches them,
+ * and searching a WA suburb flies straight to them.
+ *
+ * @param {Array<object>} coffees
+ * @param {number} width viewport width in CSS pixels
+ * @returns {[[number, number], [number, number]]}
+ */
+export function openingBounds(coffees, width) {
+  const box = fitBoundsFor(coffees);
+  if (!(Number(width) > 0) || Number(width) >= WIDE_BREAKPOINT) return box;
+
+  const [[west, south], [east, north]] = box;
+  // Never crop past the data's own west edge, and never below a span that
+  // still reads as a continent rather than a city.
+  const cropped = Math.max(
+    west,
+    Math.min(PORTRAIT_FOCUS_WEST, east - MIN_OPENING_LON_SPAN)
+  );
+  return [
+    [cropped, south],
+    [east, north],
   ];
 }
 
@@ -262,17 +320,18 @@ function placeLabel(props) {
  * Fit-padding that leaves room for the page chrome without ever eating so
  * much of the viewport that the fit inverts.
  *
- * The left/right numbers are deliberately about half a price card wide
- * (cards are ~76px and centre-anchored on their point), so a marker sitting
- * on the eastern or western edge of the fitted bounds still has both its
- * price and its count badge on screen. The bottom number clears the
- * attribution footer.
+ * Vertically it clears the search bar and the attribution footer. The
+ * left/right numbers used to be half a price card wide, so that an
+ * edge-of-bounds marker kept its price and count badge on screen; markers
+ * are now clamped inward at *every* zoom (see `clampMarkers`), which does
+ * that job properly, so on a phone the gutters shrink back to a hairline
+ * and the scale goes to the map instead.
  */
 export function fitPadding(width, height) {
-  const wide = width >= 768;
+  const wide = width >= WIDE_BREAKPOINT;
   const raw = wide
     ? { top: 28, bottom: 64, left: Math.min(width * 0.34, 420), right: 48 }
-    : { top: 92, bottom: 104, left: 48, right: 48 };
+    : { top: 84, bottom: 104, left: 24, right: 24 };
   const maxH = width * 0.45;
   const maxV = height * 0.42;
   const scaleH = raw.left + raw.right > maxH ? maxH / (raw.left + raw.right) : 1;
@@ -310,7 +369,9 @@ const LATTE = {
   landuse: '#efe5d3',
   building: '#e7dac4',
   buildingEdge: '#d9c7ab',
-  roadFill: '#fffdf8',
+  // Not white: the price cards are the brightest thing on this map, and a
+  // white street under one erases its edge.
+  roadFill: '#fdf7ea',
   roadMajor: '#f7e9cf',
   motorway: '#f1daac',
   casing: '#d9c09c',
@@ -321,6 +382,25 @@ const LATTE = {
   labelMuted: '#6b5040',
   halo: '#f9f3e8',
 };
+
+/**
+ * Layers that are switched off rather than recoloured.
+ *
+ * These all draw *sprite images*: the blue transit/POI pictograms, the
+ * white-and-blue road-shield boxes and the one-way arrows. A sprite is a
+ * bitmap, so no amount of paint-property recolouring touches it, and each
+ * one sits several steps outside a tan palette. They also earn very little
+ * on a map whose entire subject is 60 price cards — and the shields in
+ * particular are the layers whose `ref_length` filter fills the console
+ * with type warnings.
+ *
+ * Liberty's ids, verified against the live style document:
+ *   poi_r1 / poi_r7 / poi_r20 / poi_transit
+ *   highway-shield-non-us / highway-shield-us-interstate / road_shield_us
+ *   road_one_way_arrow / road_one_way_arrow_opposite
+ */
+const HIDDEN_LAYER_ID =
+  /^(poi_r\d+|poi_transit|road_one_way_arrow(_opposite)?)$|shield/;
 
 /**
  * Decide how a single Liberty layer should be recoloured.
@@ -360,9 +440,25 @@ export function latteTintFor(layer) {
     const prop = type === 'fill' ? 'fill-color' : 'fill-extrusion-color';
     if (id === 'water') return { [prop]: LATTE.water };
     if (/^building/.test(id)) {
-      return type === 'fill'
-        ? { 'fill-color': LATTE.building, 'fill-outline-color': LATTE.buildingEdge }
-        : { 'fill-extrusion-color': LATTE.building };
+      if (type === 'fill') {
+        return { 'fill-color': LATTE.building, 'fill-outline-color': LATTE.buildingEdge };
+      }
+      /*
+       * Liberty swaps flat footprints for real extrusions at z14. On a
+       * top-down price map that costs more than it gives: MapLibre shades
+       * the walls by up to 40%, which drops grey-olive slabs all over a
+       * warm tan city, and perspective slides each roof away from the
+       * screen centre — so the buildings no longer line up with the price
+       * cards pinned to the streets between them. Flatten them back to
+       * footprints and the tint holds at every zoom.
+       */
+      return {
+        'fill-extrusion-color': LATTE.building,
+        'fill-extrusion-height': 0,
+        'fill-extrusion-base': 0,
+        'fill-extrusion-vertical-gradient': false,
+        'fill-extrusion-opacity': 1,
+      };
     }
     if (/sand/.test(id)) return { [prop]: LATTE.sand };
     if (/ice/.test(id)) return { [prop]: '#f4f1ea' };
@@ -409,20 +505,30 @@ export function latteTintFor(layer) {
 
 /**
  * Walk the loaded style and apply `latteTintFor` to every layer.
- * Defensive throughout: a style that renames a layer, or a paint
- * property a layer does not support, must never break the map.
+ *
+ * Idempotent by construction: every write is a fixed value derived from
+ * the layer's id, so running it twice is a no-op. Defensive throughout: a
+ * style that renames a layer, or a paint property a layer does not
+ * support, must never break the map.
+ *
  * @param {import('maplibre-gl').Map} map
+ * @returns {boolean} true when a style with layers was actually walked
  */
 function applyLatteTint(map) {
   let layers;
   try {
     layers = map.getStyle()?.layers;
   } catch {
-    return;
+    return false;
   }
-  if (!Array.isArray(layers)) return;
+  if (!Array.isArray(layers) || layers.length === 0) return false;
 
   for (const layer of layers) {
+    if (HIDDEN_LAYER_ID.test(layer.id)) {
+      hideLayer(map, layer.id);
+      continue;
+    }
+
     hardenFilter(map, layer);
 
     const paint = latteTintFor(layer);
@@ -434,6 +540,16 @@ function applyLatteTint(map) {
         /* layer gone, or property not supported here — skip it */
       }
     }
+  }
+  return true;
+}
+
+function hideLayer(map, id) {
+  try {
+    if (map.getLayoutProperty(id, 'visibility') === 'none') return;
+    map.setLayoutProperty(id, 'visibility', 'none');
+  } catch {
+    /* the style no longer has this layer — nothing to hide */
   }
 }
 
@@ -597,7 +713,7 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
     style: MAP_STYLE_URL,
     center: AU_CENTER,
     zoom: AU_ZOOM,
-    bounds: fitBoundsFor(coffees),
+    bounds: openingBounds(coffees, width),
     fitBoundsOptions: { padding: fitPadding(width, height), duration: 0 },
     maxBounds: AU_MAX_BOUNDS,
     minZoom: MIN_ZOOM,
@@ -777,6 +893,122 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
     return new Marker({ element, anchor: 'center' }).setLngLat(coordinates);
   }
 
+  /* ----------------------------------------------------------
+     Keeping price cards on screen
+
+     A marker is centred on its point, so a coffee near the edge of the
+     viewport hangs half its card off it — and one near the bottom
+     disappears under the attribution footer. The opening view used to
+     dodge this with fat fit-padding, but padding only shapes the *first*
+     camera: pan or zoom anywhere else and the cards clip again.
+
+     So instead of moving the camera, nudge the card. Each frame, any
+     marker whose point is on screen has its element pushed back inside
+     the clear band by exactly its own overflow — never further — using
+     the `translate` property, which composes with the `transform`
+     MapLibre owns instead of fighting it. The shift is at most half a
+     card (~40px) horizontally, and a card that needs no nudge gets
+     none, so the common case is untouched.
+     ---------------------------------------------------------- */
+
+  /** Breathing room between a card and the edge it is clamped against. */
+  const EDGE_GUTTER = 8;
+
+  /** The count badge overhangs the button box; keep it on screen too. */
+  const BADGE_RIGHT = 8;
+  const BADGE_TOP = 5;
+
+  /** offsetWidth/Height are constant per card — measure each element once. */
+  const markerSizes = new WeakMap();
+
+  function markerSize(element) {
+    let size = markerSizes.get(element);
+    if (!size) {
+      size = { width: element.offsetWidth, height: element.offsetHeight };
+      if (size.width && size.height) markerSizes.set(element, size);
+    }
+    return size;
+  }
+
+  /*
+   * How far the page chrome reaches into the map. Measured from the DOM
+   * rather than assumed, because both boxes change height at runtime: the
+   * topbar grows a row when recent-search chips appear, and the footer
+   * rewraps its credits with the viewport.
+   */
+  const topbar = document.querySelector('.topbar');
+  const footer = document.getElementById('attribution');
+  let chromeInset = { top: 0, right: 0, bottom: 0 };
+
+  function measureChrome() {
+    const view = node.getBoundingClientRect();
+    const bar = topbar?.getBoundingClientRect();
+    const foot = footer?.getBoundingClientRect();
+    chromeInset = {
+      // >= 768px the topbar is a left-hand panel, not a full-width bar, so
+      // remember how far across it reaches as well as how far down.
+      top: bar?.height ? Math.max(0, bar.bottom - view.top) : 0,
+      right: bar?.height ? Math.max(0, bar.right - view.left) : 0,
+      bottom: foot?.height ? Math.max(0, view.bottom - foot.top) : 0,
+    };
+  }
+
+  function clampMarkers() {
+    const width = node.clientWidth;
+    const height = node.clientHeight;
+    if (!width || !height) return;
+
+    const floor = height - chromeInset.bottom;
+
+    for (const marker of markers.values()) {
+      const element = marker.getElement();
+      const { width: cardWidth, height: cardHeight } = markerSize(element);
+      let dx = 0;
+      let dy = 0;
+
+      if (cardWidth && cardHeight) {
+        const point = map.project(marker.getLngLat());
+        // Off-screen markers are left exactly where they are: dragging one
+        // back would pin a whole edge of the map with cards for places
+        // nobody is looking at.
+        const onScreen =
+          point.x >= 0 && point.x <= width && point.y >= 0 && point.y <= height;
+
+        if (onScreen) {
+          const left = point.x - cardWidth / 2;
+          const right = point.x + cardWidth / 2 + BADGE_RIGHT;
+          if (right - left + 2 * EDGE_GUTTER <= width) {
+            if (left < EDGE_GUTTER) dx = EDGE_GUTTER - left;
+            else if (right > width - EDGE_GUTTER) dx = width - EDGE_GUTTER - right;
+          }
+
+          // Only the part of the topbar that is actually overhead counts.
+          const ceiling = point.x + dx < chromeInset.right ? chromeInset.top : 0;
+          const top = point.y - cardHeight / 2 - BADGE_TOP;
+          const bottom = point.y + cardHeight / 2;
+          if (bottom - top + 2 * EDGE_GUTTER <= floor - ceiling) {
+            if (top < ceiling + EDGE_GUTTER) dy = ceiling + EDGE_GUTTER - top;
+            else if (bottom > floor - EDGE_GUTTER) dy = floor - EDGE_GUTTER - bottom;
+          }
+        }
+      }
+
+      // Writing the same value back would still dirty style on every frame.
+      const wanted = dx || dy ? `${Math.round(dx)}px ${Math.round(dy)}px` : '';
+      if (element.style.translate !== wanted) element.style.translate = wanted;
+    }
+  }
+
+  /** `move` fires once per animation frame during a drag or a flyTo. */
+  let clampFrame = 0;
+  function scheduleClamp() {
+    if (clampFrame) return;
+    clampFrame = requestAnimationFrame(() => {
+      clampFrame = 0;
+      clampMarkers();
+    });
+  }
+
   function render() {
     const zoom = Math.round(map.getZoom());
     let features;
@@ -808,21 +1040,60 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
       marker.remove();
       markers.delete(key);
     }
+
+    clampMarkers();
   }
 
-  // Recolour as soon as the style document is in — this fires well before
-  // the first tiles finish, so the map paints warm from its very first frame.
-  let tinted = false;
-  const tintOnce = () => {
-    // `styledata` can fire while the document is still being assembled,
-    // so re-check rather than trusting the event.
-    if (tinted || !map.isStyleLoaded()) return;
-    tinted = true;
-    map.off('styledata', tintOnce);
-    applyLatteTint(map);
+  /*
+   * Recolour as soon as the style document is in — this happens well
+   * before the first tiles finish, so the map paints warm from its very
+   * first frame.
+   *
+   * The one thing this must not do is gate on `map.isStyleLoaded()`. That
+   * predicate is about the *whole* pipeline — sources, sprite, glyphs —
+   * and is false at every `styledata` event, including the last one. Waiting
+   * for it turned the tint into a coin flip: it landed only when `load`
+   * happened to beat the fallback timer below, and about a third of loads
+   * came up stock-Liberty blue, permanently, with no way back.
+   *
+   * The right precondition is far weaker and always reachable: are there
+   * layers to recolour yet? So we try on every `styledata`, and stop only
+   * once a walk has actually happened for the current set of layers.
+   *
+   * `setPaintProperty`/`setLayoutProperty` themselves fire `styledata`, so
+   * `applying` keeps the handler out of its own re-entry, and the layer
+   * signature stops the handler from walking the style again on every
+   * event it causes.
+   */
+  let tintedSignature = '';
+  let applying = false;
+  const tintNow = () => {
+    if (applying) return;
+    let signature;
+    try {
+      // getLayersOrder is the cheap way to ask "is there a style yet?" —
+      // but never the *only* way, or a MapLibre that drops it would leave
+      // the map stock-blue with nothing in the console to say why.
+      const order =
+        typeof map.getLayersOrder === 'function'
+          ? map.getLayersOrder()
+          : map.getStyle()?.layers?.map((layer) => layer.id);
+      if (!Array.isArray(order) || order.length === 0) return;
+      signature = `${order.length}:${order[0]}:${order[order.length - 1]}`;
+    } catch {
+      return; // no style yet — a later styledata will bring one
+    }
+    if (signature === tintedSignature) return;
+
+    applying = true;
+    try {
+      if (applyLatteTint(map)) tintedSignature = signature;
+    } finally {
+      applying = false;
+    }
   };
-  map.on('styledata', tintOnce);
-  tintOnce();
+  map.on('styledata', tintNow);
+  tintNow();
 
   map.on('error', (event) => {
     console.warn('Coffee Coster: map error', event?.error || event);
@@ -854,7 +1125,9 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
     map.once('load', done);
   });
 
-  tintOnce();
+  // Belt and braces: if the style arrived during the await above without a
+  // `styledata` we heard, this catches it. Otherwise it is a no-op.
+  tintNow();
 
   /*
    * Canary for the failure mode that has no console error of its own: if
@@ -877,9 +1150,26 @@ export async function initMap({ container = 'map', coffees = [] } = {}) {
     );
   }, TILE_CANARY_MS);
 
+  measureChrome();
   render();
   map.on('moveend', render);
   map.on('zoomend', render);
+  map.on('move', scheduleClamp);
+  map.on('resize', () => {
+    measureChrome();
+    scheduleClamp();
+  });
+
+  // The chrome resizes without the map doing anything: chips appear under
+  // the search bar, the footer rewraps, the address bar slides away.
+  if (typeof ResizeObserver === 'function') {
+    const watchChrome = new ResizeObserver(() => {
+      measureChrome();
+      scheduleClamp();
+    });
+    if (topbar) watchChrome.observe(topbar);
+    if (footer) watchChrome.observe(footer);
+  }
 
   /**
    * Fly the map to a location. Used by the search module.

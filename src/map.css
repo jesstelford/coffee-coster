@@ -77,11 +77,14 @@
   min-height: 34px;
   padding: 3px 10px;
 
-  border: 1px solid var(--tan-300);
+  /* The border is a full step darker than the card face on purpose: at
+     city zooms the tinted basemap is itself tan, and a tan-300 edge on a
+     tan street simply vanished. */
+  border: 1px solid var(--tan-400);
   border-radius: var(--radius-sm);
   /* A whisper of a gradient reads as paper catching the light, and stops
      the card flattening into the tan basemap behind it. */
-  background: linear-gradient(170deg, var(--tan-100) 0%, var(--tan-200) 58%);
+  background: linear-gradient(170deg, var(--tan-25) 0%, var(--tan-200) 72%);
   color: var(--espresso-900);
   box-shadow: var(--shadow-card);
 
@@ -98,16 +101,18 @@
   display: block;
 }
 
+/* Both states keep the light hairline from --shadow-card; only the
+   depth under the card changes. */
 @media (hover: hover) {
   .cc-marker:hover .cc-marker__card {
     transform: translateY(-1px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 0 0 1.5px rgba(255, 252, 246, 0.92), var(--shadow-lg);
   }
 }
 
 .cc-marker:active .cc-marker__card {
   transform: translateY(1px) scale(0.98);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 0 0 1.5px rgba(255, 252, 246, 0.92), var(--shadow-sm);
 }
 
 /* ------------------------------------------------------------
@@ -290,9 +295,9 @@
    marker you just tapped, opened out. */
 .cc-popup__price {
   padding: 3px 12px;
-  border: 1px solid var(--tan-300);
+  border: 1px solid var(--tan-400);
   border-radius: var(--radius-sm);
-  background: linear-gradient(170deg, var(--tan-100) 0%, var(--tan-200) 58%);
+  background: linear-gradient(170deg, var(--tan-25) 0%, var(--tan-200) 72%);
   color: var(--espresso-900);
   box-shadow: var(--shadow-sm);
   font-size: var(--text-price);

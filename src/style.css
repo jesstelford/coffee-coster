@@ -8,6 +8,7 @@
 
 :root {
   /* --- palette ------------------------------------------------ */
+  --tan-25: #fffcf6; /* brightest face — price cards, so they read *on* the map */
   --tan-50: #fbf6ef; /* page background, lightest */
   --tan-100: #f5eadc; /* raised surfaces */
   --tan-200: #ebdbc6; /* price card fill */
@@ -32,9 +33,11 @@
   --shadow-sm: 0 1px 2px rgba(74, 55, 42, 0.14);
   --shadow-md: 0 1px 2px rgba(74, 55, 42, 0.1), 0 4px 14px rgba(74, 55, 42, 0.13);
   --shadow-lg: 0 2px 4px rgba(74, 55, 42, 0.1), 0 12px 32px rgba(74, 55, 42, 0.16);
-  /* Price cards sit *on* the map, so they get a touch more lift. */
-  --shadow-card: 0 1px 1px rgba(74, 55, 42, 0.16),
-    0 3px 10px rgba(74, 55, 42, 0.18);
+  /* Price cards sit *on* the map, so they get a touch more lift — plus a
+     hairline of light around the whole card, which is what separates them
+     from the tinted street fills they float over at city zooms. */
+  --shadow-card: 0 0 0 1.5px rgba(255, 252, 246, 0.92),
+    0 1px 2px rgba(74, 55, 42, 0.22), 0 4px 12px rgba(74, 55, 42, 0.2);
   /* A hairline of light along the top edge of raised tan surfaces. */
   --edge-light: inset 0 1px 0 rgba(255, 253, 249, 0.75);
 

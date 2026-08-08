@@ -66,19 +66,6 @@ const MAX_ZOOM = 17;
 /** The one breakpoint this module cares about; matches src/style.css. */
 const WIDE_BREAKPOINT = 768;
 
-/**
- * Opening-view crop for portrait screens — see `openingBounds`.
- *
- * 128.5°E is the WA/NT/SA border. East of it sits every coffee but the two
- * in Perth, plus the whole east coast, the Top End (Darwin is 130.8°E),
- * Cape York and Tasmania — so the crop reads as "Australia", not as a
- * slice of one state.
- */
-const PORTRAIT_FOCUS_WEST = 128.5;
-
-/** …but never crop so hard that the opening view stops being continental. */
-const MIN_OPENING_LON_SPAN = 18;
-
 /** Clustering feels right at ~60px radius; stop clustering past z16. */
 const CLUSTER_RADIUS = 60;
 const CLUSTER_MAX_ZOOM = 16;
@@ -168,42 +155,25 @@ export function fitBoundsFor(coffees) {
 /**
  * The box the *opening* camera should frame, given the viewport width.
  *
- * On a wide screen this is just `fitBoundsFor`: a 42°-wide continent in a
- * landscape viewport frames beautifully, and the desktop layout already
- * uses the left third for the search panel.
+ * Every coffee is in frame on first load, on every screen size — including
+ * Perth, 20° of longitude west of the next nearest data point.
  *
- * A phone is the other way round. Fitting all 38° of data longitude into
- * 375px is decided entirely by width, and the ~30° of latitude it leaves
- * over fills barely a third of the screen height — the rest is Southern
- * Ocean below and, above the search bar, Indonesia and the Philippines.
- * Cropping the western third fixes the aspect mismatch at its source. On
- * a 375x812 screen that is measurably better: 1.8x the scale, the price
- * cards spread over 50% of the viewport height instead of 30%, and water
- * drops from 55% of the pixels to 37%.
+ * On a phone that costs us: fitting all 38° of data longitude into 375px is
+ * decided entirely by width, and the ~30° of latitude left over does not fill
+ * the height, so a good half of a portrait screen is ocean. Cropping the west
+ * coast would frame the remaining data far more tightly, but a map of
+ * Australian coffee prices that opens without Western Australia on it reads as
+ * broken rather than as deliberate. Showing the whole continent wins.
  *
- * The two Perth coffees are the only records that fall outside the crop,
- * and only for the opening frame — panning or zooming out reaches them,
- * and searching a WA suburb flies straight to them.
+ * `width` is kept in the signature so the opening frame can diverge by
+ * viewport again without churning every call site.
  *
  * @param {Array<object>} coffees
  * @param {number} width viewport width in CSS pixels
  * @returns {[[number, number], [number, number]]}
  */
 export function openingBounds(coffees, width) {
-  const box = fitBoundsFor(coffees);
-  if (!(Number(width) > 0) || Number(width) >= WIDE_BREAKPOINT) return box;
-
-  const [[west, south], [east, north]] = box;
-  // Never crop past the data's own west edge, and never below a span that
-  // still reads as a continent rather than a city.
-  const cropped = Math.max(
-    west,
-    Math.min(PORTRAIT_FOCUS_WEST, east - MIN_OPENING_LON_SPAN)
-  );
-  return [
-    [cropped, south],
-    [east, north],
-  ];
+  return fitBoundsFor(coffees);
 }
 
 /**

@@ -91,12 +91,14 @@ there, recents persist across reload as a single 3-chip row, no horizontal
 scroll, 0 console errors. Unit tests: 32 assertions on the cluster median maths,
 28 on fuzzy search and recents.
 
-### Known trade-off
+### Opening-view framing
 
-On a portrait phone the opening view crops the west coast, so **Perth’s two
-coffees are off-screen until you pan or zoom out** (Darwin is retained). This is
-geometry, not an oversight: Australia is landscape-shaped and a phone is
-portrait, so fitting all 38° of data longitude into 375px leaves the markers in
-a thin band with more than half the screen showing ocean. Desktop fits the whole
-continent and is unaffected. Reverting to the complete-but-emptier fit is a
-one-line change to `PORTRAIT_FOCUS_WEST` in `src/map.js`.
+Every coffee is in frame on first load, at every screen size — Perth included.
+
+This was a deliberate call. Australia is landscape-shaped and a phone is
+portrait, so fitting all 38° of data longitude into 375px is decided entirely by
+width, and the ~30° of latitude left over does not fill the height — roughly
+half a portrait screen ends up as ocean. Cropping the west coast frames the
+remaining data far more tightly, but a map of Australian coffee prices that
+opens without Western Australia on it reads as broken rather than as
+deliberate. Showing the whole continent wins; the empty ocean is the price.
